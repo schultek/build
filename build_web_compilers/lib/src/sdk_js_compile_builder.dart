@@ -58,7 +58,7 @@ class SdkJsCompileBuilder implements Builder {
             p.setExtension(outputPath, _jsSourceMapExtension),
           ],
         },
-        jsOutputId = AssetId('build_web_compilers', outputPath);
+        jsOutputId = AssetId('jaspr_web_compilers', outputPath);
 
   @override
   final Map<String, List<String>> buildExtensions;

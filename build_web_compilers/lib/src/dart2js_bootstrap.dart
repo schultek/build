@@ -172,7 +172,7 @@ void _validateUserArgs(List<String> args) {
       log.warning(
           'Detected a manual native null assertions dart2js argument `$arg`, '
           'this should be configured using the `native_null_assertions` '
-          'option on the build_web_compilers:entrypoint builder instead.');
+          'option on the jaspr_web_compilers:entrypoint builder instead.');
     } else if (arg.startsWith('--enable-experiment')) {
       log.warning(
           'Detected a manual enable experiment dart2js argument `$arg`, '

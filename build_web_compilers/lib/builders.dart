@@ -6,7 +6,7 @@ import 'package:build/build.dart';
 import 'package:build_modules/build_modules.dart';
 import 'package:collection/collection.dart';
 
-import 'build_web_compilers.dart';
+import 'jaspr_web_compilers.dart';
 import 'src/common.dart';
 import 'src/sdk_js_compile_builder.dart';
 import 'src/sdk_js_copy_builder.dart';
@@ -22,7 +22,7 @@ Builder ddcMetaModuleCleanBuilder(_) => MetaModuleCleanBuilder(ddcPlatform);
 Builder ddcModuleBuilder([_]) => ModuleBuilder(ddcPlatform);
 
 Builder ddcBuilder(BuilderOptions options) {
-  validateOptions(options.config, _supportedOptions, 'build_web_compilers:ddc');
+  validateOptions(options.config, _supportedOptions, 'jaspr_web_compilers:ddc');
   _ensureSameDdcOptions(options);
 
   return DevCompilerBuilder(
@@ -40,7 +40,7 @@ Builder ddcBuilder(BuilderOptions options) {
 final ddcKernelExtension = '.ddc.dill';
 
 Builder ddcKernelBuilder(BuilderOptions options) {
-  validateOptions(options.config, _supportedOptions, 'build_web_compilers:ddc');
+  validateOptions(options.config, _supportedOptions, 'jaspr_web_compilers:ddc');
   _ensureSameDdcOptions(options);
 
   return KernelBuilder(
@@ -82,7 +82,7 @@ void _ensureSameDdcOptions(BuilderOptions options) {
   if (_previousDdcConfig != null) {
     if (!const MapEquality().equals(_previousDdcConfig, options.config)) {
       throw ArgumentError(
-          'The build_web_compilers:ddc builder must have the same '
+          'The jaspr_web_compilers:ddc builder must have the same '
           'configuration in all packages. Saw $_previousDdcConfig and '
           '${options.config} which are not equal.\n\n '
           'Please use the `global_options` section in '

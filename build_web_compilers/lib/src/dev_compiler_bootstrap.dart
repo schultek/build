@@ -87,7 +87,7 @@ https://github.com/dart-lang/build/blob/master/docs/faq.md#how-can-i-resolve-ski
 
   // Map from module name to module path for custom modules.
   var modulePaths = SplayTreeMap.of(
-      {'dart_sdk': r'packages/build_web_compilers/src/dev_compiler/dart_sdk'});
+      {'dart_sdk': r'packages/jaspr_web_compilers/src/dev_compiler/dart_sdk'});
   for (var jsId in transitiveJsModules) {
     // Strip out the top level dir from the path for any module, and set it to
     // `packages/` for lib modules. We set baseUrl to `/` to simplify things,
@@ -243,10 +243,10 @@ String _entryPointJs(String bootstrapModuleName) => '''
   $_currentDirectoryScript
   $_baseUrlScript
 
-  var mapperUri = baseUrl + "packages/build_web_compilers/src/" +
+  var mapperUri = baseUrl + "packages/jaspr_web_compilers/src/" +
       "dev_compiler_stack_trace/stack_trace_mapper.dart.js";
   var requireUri = baseUrl +
-      "packages/build_web_compilers/src/dev_compiler/require.js";
+      "packages/jaspr_web_compilers/src/dev_compiler/require.js";
   var mainUri = _currentDirectory + "$bootstrapModuleName";
 
   if (typeof document != 'undefined') {

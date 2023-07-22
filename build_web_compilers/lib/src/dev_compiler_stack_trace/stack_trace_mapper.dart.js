@@ -5252,7 +5252,7 @@ if(B.a.t(k,g)){q=B.a.A(k,B.a.au(k,g))
 break}j=A.d(m)+"/packages"
 if(l.bs(j,q)===B.i){i="package:"+l.aO(q,j)
 q=i
-break}}}p=A.L(!B.a.p(q,g)&&B.a.p(q,"package:build_web_compilers/src/dev_compiler/dart_sdk.")?"dart:sdk_internal":q)
+break}}}p=A.L(!B.a.p(q,g)&&B.a.p(q,"package:jaspr_web_compilers/src/dev_compiler/dart_sdk.")?"dart:sdk_internal":q)
 o=r.gM().gav()
 l=r.gM().gao()
 h=a.gaw()

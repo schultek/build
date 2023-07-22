@@ -68,7 +68,7 @@ class WebEntrypointBuilder implements Builder {
 
   factory WebEntrypointBuilder.fromOptions(BuilderOptions options) {
     validateOptions(
-        options.config, _supportedOptions, 'build_web_compilers:entrypoint',
+        options.config, _supportedOptions, 'jaspr_web_compilers:entrypoint',
         deprecatedOptions: _deprecatedOptions);
     var compilerOption =
         options.config[_compilerOption] as String? ?? 'dartdevc';
@@ -163,6 +163,6 @@ Future<bool> _isAppEntryPoint(AssetId dartId, AssetReader reader) async {
 /// Files copied from the SDK that are required at runtime to run a DDC
 /// application.
 final _ddcSdkResources = [
-  AssetId('build_web_compilers', 'lib/src/dev_compiler/dart_sdk.js'),
-  AssetId('build_web_compilers', 'lib/src/dev_compiler/require.js')
+  AssetId('jaspr_web_compilers', 'lib/src/dev_compiler/dart_sdk.js'),
+  AssetId('jaspr_web_compilers', 'lib/src/dev_compiler/require.js')
 ];

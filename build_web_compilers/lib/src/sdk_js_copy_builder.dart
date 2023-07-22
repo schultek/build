@@ -11,7 +11,7 @@ import 'package:path/path.dart' as p;
 import 'common.dart';
 
 /// Copies the require.js file from the sdk itself, into the
-/// build_web_compilers package at `lib/require.js`.
+/// jaspr_web_compilers package at `lib/require.js`.
 class SdkJsCopyBuilder implements Builder {
   @override
   final buildExtensions = {
@@ -24,12 +24,12 @@ class SdkJsCopyBuilder implements Builder {
 
   @override
   FutureOr<void> build(BuildStep buildStep) async {
-    if (buildStep.inputId.package != 'build_web_compilers') {
+    if (buildStep.inputId.package != 'jaspr_web_compilers') {
       throw StateError('This builder should only be applied to the '
-          'build_web_compilers package');
+          'jaspr_web_compilers package');
     }
     await buildStep.writeAsBytes(
-        AssetId('build_web_compilers', 'lib/src/dev_compiler/require.js'),
+        AssetId('jaspr_web_compilers', 'lib/src/dev_compiler/require.js'),
         await File(_sdkRequireJsLocation).readAsBytes());
   }
 }

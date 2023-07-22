@@ -26,6 +26,6 @@ class _CopyBuilder extends Builder {
 }
 
 final _stackTraceMapperJs =
-    AssetId('build_web_compilers', 'web/stack_trace_mapper.dart.js');
+    AssetId('jaspr_web_compilers', 'web/stack_trace_mapper.dart.js');
 final _stackTraceMapperCopyJs = AssetId('build_web_compilers',
     'lib/src/dev_compiler_stack_trace/stack_trace_mapper.dart.js');
