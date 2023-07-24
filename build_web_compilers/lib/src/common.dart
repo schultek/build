@@ -12,6 +12,7 @@ final defaultAnalysisOptionsId =
     AssetId('build_modules', 'lib/src/analysis_options.default.yaml');
 
 final sdkDir = p.dirname(p.dirname(Platform.resolvedExecutable));
+final webSdkDir = p.join(p.dirname(sdkDir), 'flutter_web_sdk');
 
 String defaultAnalysisOptionsArg(ScratchSpace scratchSpace) =>
     '--options=${scratchSpace.fileFor(defaultAnalysisOptionsId).path}';

@@ -75,7 +75,7 @@ https://github.com/dart-lang/build/blob/master/docs/faq.md#how-can-i-resolve-ski
             ? 'packages/${dartUri.path}'
             : dartUri.path.substring(1)) +
         jsEntrypointExtension;
-    var librariesSpec = p.joinAll([sdkDir, 'lib', 'libraries.json']);
+    var librariesSpec = p.joinAll([webSdkDir, 'libraries.json']);
     _validateUserArgs(dart2JsArgs);
     args = dart2JsArgs.toList()
       ..addAll([

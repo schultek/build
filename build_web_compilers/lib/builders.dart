@@ -5,10 +5,10 @@
 import 'package:build/build.dart';
 import 'package:build_modules/build_modules.dart';
 import 'package:collection/collection.dart';
+import 'package:path/path.dart' as p;
 
 import 'jaspr_web_compilers.dart';
 import 'src/common.dart';
-import 'src/sdk_js_compile_builder.dart';
 import 'src/sdk_js_copy_builder.dart';
 
 // Shared entrypoint builder
@@ -30,10 +30,12 @@ Builder ddcBuilder(BuilderOptions options) {
     generateFullDill: _readGenerateFullDillOption(options),
     emitDebugSymbols: _readEmitDebugSymbolsOption(options),
     canaryFeatures: _readCanaryOption(options),
-    sdkKernelPath: sdkDdcKernelPath,
+    platformSdk: webSdkDir,
+    sdkKernelPath: p.url.join('kernel', 'ddc_outline_sound.dill'),
     trackUnusedInputs: _readTrackInputsCompilerOption(options),
     platform: ddcPlatform,
     environment: _readEnvironmentOption(options),
+    librariesPath: p.join(webSdkDir, 'libraries.json'),
   );
 }
 
@@ -45,19 +47,16 @@ Builder ddcKernelBuilder(BuilderOptions options) {
 
   return KernelBuilder(
       summaryOnly: true,
-      sdkKernelPath: sdkDdcKernelPath,
+      platformSdk: webSdkDir,
+      sdkKernelPath: p.url.join('kernel', 'ddc_outline_sound.dill'),
       outputExtension: ddcKernelExtension,
       platform: ddcPlatform,
       useIncrementalCompiler: _readUseIncrementalCompilerOption(options),
+      librariesPath: p.join(webSdkDir, 'libraries.json'),
       trackUnusedInputs: _readTrackInputsCompilerOption(options));
 }
 
-Builder sdkJsCopyRequirejs(_) => SdkJsCopyBuilder();
-Builder sdkJsCompile(BuilderOptions options) => SdkJsCompileBuilder(
-      sdkKernelPath: 'lib/_internal/ddc_platform.dill',
-      outputPath: 'lib/src/dev_compiler/dart_sdk.js',
-      canaryFeatures: _readCanaryOption(options),
-    );
+Builder sdkJsCopy(_) => SdkJsCopyBuilder();
 
 // Dart2js related builders
 Builder dart2jsMetaModuleBuilder(BuilderOptions options) =>

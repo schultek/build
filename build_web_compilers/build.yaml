@@ -17,8 +17,7 @@ builders:
   sdk_js:
     import: "package:jaspr_web_compilers/builders.dart"
     builder_factories:
-      - sdkJsCompile
-      - sdkJsCopyRequirejs
+      - sdkJsCopy
     build_extensions:
       $package$:
         - lib/src/dev_compiler/dart_sdk.js
