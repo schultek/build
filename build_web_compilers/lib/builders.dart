@@ -10,10 +10,13 @@ import 'package:path/path.dart' as p;
 import 'jaspr_web_compilers.dart';
 import 'src/common.dart';
 import 'src/sdk_js_copy_builder.dart';
+import 'src/web_plugins_builder.dart';
 
 // Shared entrypoint builder
 Builder webEntrypointBuilder(BuilderOptions options) =>
     WebEntrypointBuilder.fromOptions(options);
+
+Builder webPluginsBuilder(_) => WebPluginsBuilder();
 
 // Ddc related builders
 Builder ddcMetaModuleBuilder(BuilderOptions options) =>

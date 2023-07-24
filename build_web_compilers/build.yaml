@@ -26,6 +26,16 @@ builders:
     is_optional: True
     auto_apply: none
     runs_before: ["jaspr_web_compilers:entrypoint"]
+  web_plugins:
+    import: "package:jaspr_web_compilers/builders.dart"
+    builder_factories:
+      - webPluginsBuilder
+    build_extensions:
+      $package$:
+        - lib/web_plugin_registrant.dart
+    build_to: source
+    auto_apply: root_package
+    runs_before: [ "jaspr_web_compilers:entrypoint" ]
   dart2js_modules:
     import: "package:jaspr_web_compilers/builders.dart"
     builder_factories:
@@ -99,6 +109,7 @@ builders:
       - .ddc.js
       - .ddc.module
       - .dart2js.module
+      - .plugins.json
     build_to: cache
     auto_apply: root_package
     defaults:
