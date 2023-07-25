@@ -18,25 +18,24 @@ class WebPluginsBuilder implements Builder {
 
   @override
   FutureOr<void> build(BuildStep buildStep) async {
-    try {
-      var packageConfig = await buildStep.packageConfig;
-      final plugins = <Plugin>[];
+    var packageConfig = await buildStep.packageConfig;
+    final plugins = <Plugin>[];
 
-      for (var package in packageConfig.packages) {
-        final plugin = await _loadPluginForPackage(package, buildStep);
-        if (plugin != null) {
-          plugins.add(plugin);
-        }
+    for (var package in packageConfig.packages) {
+      final plugin = await _loadPluginForPackage(package, buildStep);
+      if (plugin != null) {
+        plugins.add(plugin);
       }
-
-      await buildStep.writeAsString(
-        AssetId(buildStep.inputId.package, 'lib/web_plugin_registrant.dart'),
-        _generateWebPluginsFile(plugins),
-      );
-    } catch (e, st) {
-      print(e);
-      print(st);
     }
+
+    if (plugins.isEmpty) {
+      return;
+    }
+
+    await buildStep.writeAsString(
+      AssetId(buildStep.inputId.package, 'lib/web_plugin_registrant.dart'),
+      _generateWebPluginsFile(plugins),
+    );
   }
 
   Future<Plugin?> _loadPluginForPackage(
