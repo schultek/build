@@ -44,7 +44,7 @@ class WebPluginsBuilder implements Builder {
     Object? pubspec;
     try {
       pubspec = loadYaml(await buildStep.readAsString(pubspecId));
-    } on YamlException catch (err) {
+    } on YamlException catch (_) {
       // Do nothing, potentially not a plugin.
     }
 
@@ -68,6 +68,8 @@ class WebPluginsBuilder implements Builder {
         );
       }
     }
+
+    return null;
   }
 
   String _generateWebPluginsFile(List<Plugin> plugins) {

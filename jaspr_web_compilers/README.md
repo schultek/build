@@ -1,3 +1,7 @@
+Fork of `package:build_web_compilers` to be used with `package:jaspr`.
+
+---
+
 <p align="center">
   Web compilers for users of <a href="https://pub.dev/packages/build"><code>package:build</code></a>.
   <br>
