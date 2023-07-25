@@ -5,8 +5,8 @@
 import 'package:build/build.dart';
 import 'package:build_modules/build_modules.dart';
 import 'package:build_test/build_test.dart';
-import 'package:build_web_compilers/build_web_compilers.dart';
-import 'package:build_web_compilers/builders.dart';
+import 'package:jaspr_web_compilers/builders.dart';
+import 'package:jaspr_web_compilers/jaspr_web_compilers.dart';
 import 'package:test/test.dart';
 
 import 'util.dart';
@@ -121,34 +121,6 @@ void main() {
           assets,
           outputs: expectedOutputs);
     });
-
-    test('can enable canary features for SDK', () async {
-      var sdkAssets = <String, Object>{'build_web_compilers|fake.txt': ''};
-      await testBuilderAndCollectAssets(
-          sdkJsCompile(BuilderOptions({'canary': true})), sdkAssets);
-
-      var expectedOutputs = {
-        'build_web_compilers|fake.txt': isEmpty,
-        'build_web_compilers|lib/src/dev_compiler/dart_sdk.js':
-            decodedMatches(contains('canary')),
-        'build_web_compilers|lib/src/dev_compiler/dart_sdk.js.map': isNotEmpty,
-      };
-      expect(sdkAssets, expectedOutputs);
-    });
-
-    test('does not enable canary features for SDK by default', () async {
-      var sdkAssets = <String, Object>{'build_web_compilers|fake.txt': ''};
-      await testBuilderAndCollectAssets(
-          sdkJsCompile(BuilderOptions({})), sdkAssets);
-
-      var expectedOutputs = {
-        'build_web_compilers|fake.txt': isEmpty,
-        'build_web_compilers|lib/src/dev_compiler/dart_sdk.js':
-            decodedMatches(isNot(contains('canary'))),
-        'build_web_compilers|lib/src/dev_compiler/dart_sdk.js.map': isNotEmpty,
-      };
-      expect(sdkAssets, expectedOutputs);
-    });
   });
 }
 
@@ -159,9 +131,7 @@ Future<void> runPrerequisites(Map<String, Object> assets) async {
   // It is necessary to add a fake asset so that the build_web_compilers
   // package exists.
   var sdkAssets = <String, Object>{'build_web_compilers|fake.txt': ''};
-  await testBuilderAndCollectAssets(sdkJsCopyRequirejs(null), sdkAssets);
-  await testBuilderAndCollectAssets(
-      sdkJsCompile(BuilderOptions({})), sdkAssets);
+  await testBuilderAndCollectAssets(sdkJsCopy(null), sdkAssets);
   assets.addAll(sdkAssets);
 
   await testBuilderAndCollectAssets(const ModuleLibraryBuilder(), assets);
