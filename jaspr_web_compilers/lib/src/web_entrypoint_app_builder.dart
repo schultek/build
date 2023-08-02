@@ -7,11 +7,7 @@ import 'dart:async';
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:build/build.dart';
-import 'package:build_modules/build_modules.dart';
-
-import 'common.dart';
-import 'dart2js_bootstrap.dart';
-import 'dev_compiler_bootstrap.dart';
+import 'package:path/path.dart' as p;
 
 const ddcBootstrapExtension = '.dart.bootstrap.js';
 const jsEntrypointExtension = '.dart.js';
@@ -49,61 +45,12 @@ const _deprecatedOptions = [
 /// A builder which compiles entrypoints for the web.
 ///
 /// Supports `dart2js` and `dartdevc`.
-class WebEntrypointBuilder implements Builder {
-  final WebCompiler webCompiler;
-  final List<String> dart2JsArgs;
-
-  /// Whether or not to enable runtime non-null assertions for values returned
-  /// from browser apis.
-  ///
-  /// If `null` then no flag will be provided to the compiler, and the default
-  /// will be used.
-  final bool? nativeNullAssertions;
-
-  const WebEntrypointBuilder(
-    this.webCompiler, {
-    this.dart2JsArgs = const [],
-    required this.nativeNullAssertions,
-  });
-
-  factory WebEntrypointBuilder.fromOptions(BuilderOptions options) {
-    validateOptions(options.config, _supportedOptions, 'jaspr_web_compilers:entrypoint',
-        deprecatedOptions: _deprecatedOptions);
-    var compilerOption = options.config[_compilerOption] as String? ?? 'dartdevc';
-    WebCompiler compiler;
-    switch (compilerOption) {
-      case 'dartdevc':
-        compiler = WebCompiler.DartDevc;
-        break;
-      case 'dart2js':
-        compiler = WebCompiler.Dart2Js;
-        break;
-      default:
-        throw ArgumentError.value(compilerOption, _compilerOption, 'Only `dartdevc` and `dart2js` are supported.');
-    }
-
-    if (options.config[_dart2jsArgsOption] is! List) {
-      var message = options.config[_dart2jsArgsOption] is String
-          ? 'There may have been a failure decoding as JSON, expected a list'
-          : 'Expected a list';
-      throw ArgumentError.value(options.config[_dart2jsArgsOption], _dart2jsArgsOption, message);
-    }
-    var dart2JsArgs = (options.config[_dart2jsArgsOption] as List?)?.map((arg) => '$arg').toList() ?? const <String>[];
-
-    return WebEntrypointBuilder(compiler,
-        dart2JsArgs: dart2JsArgs, nativeNullAssertions: options.config[_nativeNullAssertionsOption] as bool?);
-  }
+class WebEntrypointAppBuilder implements Builder {
+  const WebEntrypointAppBuilder();
 
   @override
   final buildExtensions = const {
-    '.app.dart': [
-      '.app$ddcBootstrapExtension',
-      '.app$jsEntrypointExtension',
-      '.app$jsEntrypointSourceMapExtension',
-      '.app$jsEntrypointArchiveExtension',
-      '.app$digestsEntrypointExtension',
-      '.app$mergedMetadataExtension',
-    ],
+    '.dart': ['.app.dart'],
   };
 
   @override
@@ -111,18 +58,24 @@ class WebEntrypointBuilder implements Builder {
     var dartEntrypointId = buildStep.inputId;
     var isAppEntrypoint = await _isAppEntryPoint(dartEntrypointId, buildStep);
     if (!isAppEntrypoint) return;
-    switch (webCompiler) {
-      case WebCompiler.DartDevc:
-        try {
-          await bootstrapDdc(buildStep, nativeNullAssertions: nativeNullAssertions, requiredAssets: _ddcSdkResources);
-        } on MissingModulesException catch (e) {
-          log.severe('$e');
-        }
-        break;
-      case WebCompiler.Dart2Js:
-        await bootstrapDart2Js(buildStep, dart2JsArgs, nativeNullAssertions: nativeNullAssertions);
-        break;
-    }
+
+    var appEntrypoingId = dartEntrypointId.changeExtension('.app.dart');
+
+    var hasWebPlugins = await buildStep.canRead(AssetId(dartEntrypointId.package, 'lib/web_plugin_registrant.dart'));
+
+    await buildStep.writeAsString(appEntrypoingId, '''
+import 'dart:ui' as ui;
+
+import 'package:jaspr/browser.dart';
+import '${p.basename(dartEntrypointId.path)}' as app;
+${hasWebPlugins ? "import 'package:${dartEntrypointId.package}/web_plugin_registrant.dart';" : ''}
+
+Future<void> main() async {
+  BrowserAppBinding.warmupFlutterEngine = ui.webOnlyWarmupEngine;
+  ${hasWebPlugins ? 'registerPlugins();' : ''}
+  app.main();
+}
+    ''');
   }
 }
 

@@ -33,9 +33,9 @@ builders:
     build_extensions:
       $package$:
         - lib/web_plugin_registrant.dart
-    build_to: source
+    build_to: cache
     auto_apply: root_package
-    runs_before: [ "jaspr_web_compilers:entrypoint" ]
+    runs_before: [ "jaspr_web_compilers:entrypoint_app" ]
   dart2js_modules:
     import: "package:jaspr_web_compilers/builders.dart"
     builder_factories:
@@ -92,24 +92,44 @@ builders:
       # place we can (its the only builder which runs on all packages).
       - jaspr_web_compilers:dart2js_modules
       - jaspr_web_compilers:dart_source_cleanup
+  entrypoint_app:
+    import: "package:jaspr_web_compilers/builders.dart"
+    builder_factories:
+      - webEntrypointAppBuilder
+    build_extensions:
+      .dart:
+        - .app.dart
+    build_to: cache
+    auto_apply: root_package
+    defaults:
+      generate_for:
+        include:
+          - web/**
+          - test/**.dart.browser_test.dart
+          - example/**
+          - benchmark/**
+        exclude:
+          - test/**.node_test.dart
+          - test/**.vm_test.dart
+    applies_builders:
+      - jaspr_web_compilers:entrypoint
   entrypoint:
     import: "package:jaspr_web_compilers/builders.dart"
     builder_factories:
       - webEntrypointBuilder
     build_extensions:
-      .dart:
-        - .dart.bootstrap.js
-        - .dart.js
-        - .dart.js.map
-        - .dart.js.tar.gz
-        - .digests
-        - .dart.ddc_merged_metadata
+      .app.dart:
+        - .app.dart.bootstrap.js
+        - .app.dart.js
+        - .app.dart.js.map
+        - .app.dart.js.tar.gz
+        - .app.digests
+        - .app.dart.ddc_merged_metadata
     required_inputs:
-      - .dart
+      - .app.dart
       - .ddc.js
       - .ddc.module
       - .dart2js.module
-      - .plugins.json
     build_to: cache
     auto_apply: root_package
     defaults:
