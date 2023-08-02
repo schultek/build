@@ -14,15 +14,18 @@ import 'src/web_entrypoint_app_builder.dart';
 import 'src/web_plugins_builder.dart';
 
 // Shared entrypoint bootstrap builder
-Builder webEntrypointAppBuilder(BuilderOptions options) => WebEntrypointAppBuilder();
+Builder webEntrypointAppBuilder(BuilderOptions options) =>
+    WebEntrypointAppBuilder();
 
 // Shared entrypoint builder
-Builder webEntrypointBuilder(BuilderOptions options) => WebEntrypointBuilder.fromOptions(options);
+Builder webEntrypointBuilder(BuilderOptions options) =>
+    WebEntrypointBuilder.fromOptions(options);
 
 Builder webPluginsBuilder(_) => WebPluginsBuilder();
 
 // Ddc related builders
-Builder ddcMetaModuleBuilder(BuilderOptions options) => MetaModuleBuilder.forOptions(ddcPlatform, options);
+Builder ddcMetaModuleBuilder(BuilderOptions options) =>
+    MetaModuleBuilder.forOptions(ddcPlatform, options);
 Builder ddcMetaModuleCleanBuilder(_) => MetaModuleCleanBuilder(ddcPlatform);
 Builder ddcModuleBuilder([_]) => ModuleBuilder(ddcPlatform);
 
@@ -64,21 +67,29 @@ Builder ddcKernelBuilder(BuilderOptions options) {
 Builder sdkJsCopy(_) => SdkJsCopyBuilder();
 
 // Dart2js related builders
-Builder dart2jsMetaModuleBuilder(BuilderOptions options) => MetaModuleBuilder.forOptions(dart2jsPlatform, options);
-Builder dart2jsMetaModuleCleanBuilder(_) => MetaModuleCleanBuilder(dart2jsPlatform);
+Builder dart2jsMetaModuleBuilder(BuilderOptions options) =>
+    MetaModuleBuilder.forOptions(dart2jsPlatform, options);
+Builder dart2jsMetaModuleCleanBuilder(_) =>
+    MetaModuleCleanBuilder(dart2jsPlatform);
 Builder dart2jsModuleBuilder([_]) => ModuleBuilder(dart2jsPlatform);
-PostProcessBuilder dart2jsArchiveExtractor(BuilderOptions options) => Dart2JsArchiveExtractor.fromOptions(options);
+PostProcessBuilder dart2jsArchiveExtractor(BuilderOptions options) =>
+    Dart2JsArchiveExtractor.fromOptions(options);
 
 // General purpose builders
-PostProcessBuilder dartSourceCleanup(BuilderOptions options) => (options.config['enabled'] as bool? ?? false)
-    ? const FileDeletingBuilder(['.dart', '.js.map', '.ddc.js.metadata', '.ddc_merged_metadata'])
-    : const FileDeletingBuilder(['.dart', '.js.map', '.ddc.js.metadata', '.ddc_merged_metadata'], isEnabled: false);
+PostProcessBuilder dartSourceCleanup(BuilderOptions options) =>
+    (options.config['enabled'] as bool? ?? false)
+        ? const FileDeletingBuilder(
+            ['.dart', '.js.map', '.ddc.js.metadata', '.ddc_merged_metadata'])
+        : const FileDeletingBuilder(
+            ['.dart', '.js.map', '.ddc.js.metadata', '.ddc_merged_metadata'],
+            isEnabled: false);
 
 /// Throws if it is ever given different options.
 void _ensureSameDdcOptions(BuilderOptions options) {
   if (_previousDdcConfig != null) {
     if (!const MapEquality().equals(_previousDdcConfig, options.config)) {
-      throw ArgumentError('The jaspr_web_compilers:ddc builder must have the same '
+      throw ArgumentError(
+          'The jaspr_web_compilers:ddc builder must have the same '
           'configuration in all packages. Saw $_previousDdcConfig and '
           '${options.config} which are not equal.\n\n '
           'Please use the `global_options` section in '

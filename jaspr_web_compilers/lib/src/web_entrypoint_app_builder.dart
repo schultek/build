@@ -28,7 +28,8 @@ class WebEntrypointAppBuilder implements Builder {
 
     var appEntrypoingId = dartEntrypointId.changeExtension('.app.dart');
 
-    var hasWebPlugins = await buildStep.canRead(AssetId(dartEntrypointId.package, 'lib/web_plugin_registrant.dart'));
+    var hasWebPlugins = await buildStep.canRead(
+        AssetId(dartEntrypointId.package, 'lib/web_plugin_registrant.dart'));
 
     var packageConfig = await buildStep.packageConfig;
     var usesFlutterEmbed = packageConfig['jaspr_flutter_embed'] != null;

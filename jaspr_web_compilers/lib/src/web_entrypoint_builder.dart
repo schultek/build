@@ -67,9 +67,11 @@ class WebEntrypointBuilder implements Builder {
   });
 
   factory WebEntrypointBuilder.fromOptions(BuilderOptions options) {
-    validateOptions(options.config, _supportedOptions, 'jaspr_web_compilers:entrypoint',
+    validateOptions(
+        options.config, _supportedOptions, 'jaspr_web_compilers:entrypoint',
         deprecatedOptions: _deprecatedOptions);
-    var compilerOption = options.config[_compilerOption] as String? ?? 'dartdevc';
+    var compilerOption =
+        options.config[_compilerOption] as String? ?? 'dartdevc';
     WebCompiler compiler;
     switch (compilerOption) {
       case 'dartdevc':
@@ -79,19 +81,26 @@ class WebEntrypointBuilder implements Builder {
         compiler = WebCompiler.Dart2Js;
         break;
       default:
-        throw ArgumentError.value(compilerOption, _compilerOption, 'Only `dartdevc` and `dart2js` are supported.');
+        throw ArgumentError.value(compilerOption, _compilerOption,
+            'Only `dartdevc` and `dart2js` are supported.');
     }
 
     if (options.config[_dart2jsArgsOption] is! List) {
       var message = options.config[_dart2jsArgsOption] is String
           ? 'There may have been a failure decoding as JSON, expected a list'
           : 'Expected a list';
-      throw ArgumentError.value(options.config[_dart2jsArgsOption], _dart2jsArgsOption, message);
+      throw ArgumentError.value(
+          options.config[_dart2jsArgsOption], _dart2jsArgsOption, message);
     }
-    var dart2JsArgs = (options.config[_dart2jsArgsOption] as List?)?.map((arg) => '$arg').toList() ?? const <String>[];
+    var dart2JsArgs = (options.config[_dart2jsArgsOption] as List?)
+            ?.map((arg) => '$arg')
+            .toList() ??
+        const <String>[];
 
     return WebEntrypointBuilder(compiler,
-        dart2JsArgs: dart2JsArgs, nativeNullAssertions: options.config[_nativeNullAssertionsOption] as bool?);
+        dart2JsArgs: dart2JsArgs,
+        nativeNullAssertions:
+            options.config[_nativeNullAssertionsOption] as bool?);
   }
 
   @override
@@ -114,13 +123,16 @@ class WebEntrypointBuilder implements Builder {
     switch (webCompiler) {
       case WebCompiler.DartDevc:
         try {
-          await bootstrapDdc(buildStep, nativeNullAssertions: nativeNullAssertions, requiredAssets: _ddcSdkResources);
+          await bootstrapDdc(buildStep,
+              nativeNullAssertions: nativeNullAssertions,
+              requiredAssets: _ddcSdkResources);
         } on MissingModulesException catch (e) {
           log.severe('$e');
         }
         break;
       case WebCompiler.Dart2Js:
-        await bootstrapDart2Js(buildStep, dart2JsArgs, nativeNullAssertions: nativeNullAssertions);
+        await bootstrapDart2Js(buildStep, dart2JsArgs,
+            nativeNullAssertions: nativeNullAssertions);
         break;
     }
   }
@@ -132,7 +144,9 @@ Future<bool> isAppEntryPoint(AssetId dartId, AssetReader reader) async {
   assert(dartId.extension == '.dart');
   // Skip reporting errors here, dartdevc will report them later with nicer
   // formatting.
-  var parsed = parseString(content: await reader.readAsString(dartId), throwIfDiagnostics: false).unit;
+  var parsed = parseString(
+          content: await reader.readAsString(dartId), throwIfDiagnostics: false)
+      .unit;
   // Allow two or fewer arguments so that entrypoints intended for use with
   // [spawnUri] get counted.
   //
