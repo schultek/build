@@ -35,6 +35,7 @@ Future<void> _bootstrapDart2Js(
   required bool? nativeNullAssertions,
 }) async {
   var dartEntrypointId = buildStep.inputId;
+  var dartEntrypointIdBase = buildStep.inputId.changeExtension('');
   var moduleId =
       dartEntrypointId.changeExtension(moduleExtension(dart2jsPlatform));
   var args = <String>[];
@@ -71,9 +72,10 @@ https://github.com/dart-lang/build/blob/master/docs/faq.md#how-can-i-resolve-ski
         ? Uri.parse('package:${dartEntrypointId.package}/'
             '${dartEntrypointId.path.substring('lib/'.length)}')
         : Uri.parse('$multiRootScheme:///${dartEntrypointId.path}');
-    var jsOutputPath = p.withoutExtension(dartUri.scheme == 'package'
-            ? 'packages/${dartUri.path}'
-            : dartUri.path.substring(1)) +
+    var jsOutputPath = p.withoutExtension(p.withoutExtension(
+            dartUri.scheme == 'package'
+                ? 'packages/${dartUri.path}'
+                : dartUri.path.substring(1))) +
         jsEntrypointExtension;
     var librariesSpec = p.joinAll([webSdkDir, 'libraries.json']);
     _validateUserArgs(dart2JsArgs);
@@ -102,13 +104,13 @@ https://github.com/dart-lang/build/blob/master/docs/faq.md#how-can-i-resolve-ski
         ...args,
       ],
       workingDirectory: scratchSpace.tempDir.path);
-  var jsOutputId = dartEntrypointId.changeExtension(jsEntrypointExtension);
+  var jsOutputId = dartEntrypointIdBase.changeExtension(jsEntrypointExtension);
   var jsOutputFile = scratchSpace.fileFor(jsOutputId);
   if (result.exitCode == 0 && await jsOutputFile.exists()) {
     log.info('${result.stdout}\n${result.stderr}');
     var rootDir = p.dirname(jsOutputFile.path);
-    var dartFile = p.basename(dartEntrypointId.path);
-    var fileGlob = Glob('$dartFile.js*');
+    var jsFile = p.basename(jsOutputId.path);
+    var fileGlob = Glob('$jsFile*');
     var archive = Archive();
     await for (var jsFile in fileGlob.list(root: rootDir)) {
       if (jsFile.path.endsWith(jsEntrypointExtension) ||
@@ -127,7 +129,7 @@ https://github.com/dart-lang/build/blob/master/docs/faq.md#how-can-i-resolve-ski
     }
     if (archive.isNotEmpty) {
       var archiveId =
-          dartEntrypointId.changeExtension(jsEntrypointArchiveExtension);
+          dartEntrypointIdBase.changeExtension(jsEntrypointArchiveExtension);
       await buildStep.writeAsBytes(archiveId, TarEncoder().encode(archive));
     }
 

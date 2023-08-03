@@ -35,7 +35,7 @@ builders:
         - lib/web_plugin_registrant.dart
     build_to: cache
     auto_apply: root_package
-    runs_before: [ "jaspr_web_compilers:entrypoint_app" ]
+    runs_before: [ "jaspr_web_compilers:entrypoint_bootstrap" ]
   dart2js_modules:
     import: "package:jaspr_web_compilers/builders.dart"
     builder_factories:

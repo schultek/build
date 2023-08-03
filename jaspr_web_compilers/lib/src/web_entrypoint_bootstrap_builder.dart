@@ -9,7 +9,7 @@ import 'package:path/path.dart' as p;
 
 import 'web_entrypoint_builder.dart';
 
-const bootstrapExtension = '.boostrap';
+const bootstrapExtension = '.bootstrap';
 const bootstrapDartExtension = '$bootstrapExtension.dart';
 
 /// A builder which bootstraps entrypoints for the web.
@@ -29,7 +29,7 @@ class WebEntrypointBootstrapBuilder implements Builder {
     var isAppEntrypoint = await isAppEntryPoint(dartEntrypointId, buildStep);
     if (!isAppEntrypoint) return;
 
-    var appEntrypoingId =
+    var appEntrypointId =
         dartEntrypointId.changeExtension(bootstrapDartExtension);
 
     var hasWebPlugins = await buildStep.canRead(
@@ -38,7 +38,7 @@ class WebEntrypointBootstrapBuilder implements Builder {
     var packageConfig = await buildStep.packageConfig;
     var usesFlutterEmbed = packageConfig['jaspr_flutter_embed'] != null;
 
-    await buildStep.writeAsString(appEntrypoingId, '''
+    await buildStep.writeAsString(appEntrypointId, '''
 import 'dart:ui' as ui;
 
 import '${p.basename(dartEntrypointId.path)}' as app;
@@ -48,7 +48,7 @@ ${hasWebPlugins ? "import 'package:${dartEntrypointId.package}/web_plugin_regist
 Future<void> main() async {
   ${usesFlutterEmbed ? 'FlutterEmbedBinding.warmupFlutterEngine = ui.webOnlyWarmupEngine;' : ''}
   ${hasWebPlugins ? 'registerPlugins();' : ''}
-  app.main();
+  return app.main();
 }
     ''');
   }
