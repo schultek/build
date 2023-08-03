@@ -9,15 +9,18 @@ import 'package:path/path.dart' as p;
 
 import 'web_entrypoint_builder.dart';
 
-/// A builder which compiles entrypoints for the web.
-///
-/// Supports `dart2js` and `dartdevc`.
-class WebEntrypointAppBuilder implements Builder {
-  const WebEntrypointAppBuilder();
+const bootstrapExtension = '.boostrap';
+const bootstrapDartExtension = '$bootstrapExtension.dart';
+
+/// A builder which bootstraps entrypoints for the web.
+class WebEntrypointBootstrapBuilder implements Builder {
+  const WebEntrypointBootstrapBuilder();
 
   @override
   final buildExtensions = const {
-    '.dart': ['.app.dart'],
+    '.dart': [
+      bootstrapDartExtension,
+    ],
   };
 
   @override
@@ -26,7 +29,8 @@ class WebEntrypointAppBuilder implements Builder {
     var isAppEntrypoint = await isAppEntryPoint(dartEntrypointId, buildStep);
     if (!isAppEntrypoint) return;
 
-    var appEntrypoingId = dartEntrypointId.changeExtension('.app.dart');
+    var appEntrypoingId =
+        dartEntrypointId.changeExtension(bootstrapDartExtension);
 
     var hasWebPlugins = await buildStep.canRead(
         AssetId(dartEntrypointId.package, 'lib/web_plugin_registrant.dart'));

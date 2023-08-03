@@ -12,6 +12,7 @@ import 'package:build_modules/build_modules.dart';
 import 'common.dart';
 import 'dart2js_bootstrap.dart';
 import 'dev_compiler_bootstrap.dart';
+import 'web_entrypoint_bootstrap_builder.dart';
 
 const ddcBootstrapExtension = '.dart.bootstrap.js';
 const jsEntrypointExtension = '.dart.js';
@@ -105,13 +106,13 @@ class WebEntrypointBuilder implements Builder {
 
   @override
   final buildExtensions = const {
-    '.app.dart': [
-      '.app$ddcBootstrapExtension',
-      '.app$jsEntrypointExtension',
-      '.app$jsEntrypointSourceMapExtension',
-      '.app$jsEntrypointArchiveExtension',
-      '.app$digestsEntrypointExtension',
-      '.app$mergedMetadataExtension',
+    bootstrapDartExtension: [
+      ddcBootstrapExtension,
+      jsEntrypointExtension,
+      jsEntrypointSourceMapExtension,
+      jsEntrypointArchiveExtension,
+      digestsEntrypointExtension,
+      mergedMetadataExtension,
     ],
   };
 

@@ -10,12 +10,12 @@ import 'package:path/path.dart' as p;
 import 'jaspr_web_compilers.dart';
 import 'src/common.dart';
 import 'src/sdk_js_copy_builder.dart';
-import 'src/web_entrypoint_app_builder.dart';
+import 'src/web_entrypoint_bootstrap_builder.dart';
 import 'src/web_plugins_builder.dart';
 
 // Shared entrypoint bootstrap builder
-Builder webEntrypointAppBuilder(BuilderOptions options) =>
-    WebEntrypointAppBuilder();
+Builder webEntrypointBootstrapBuilder(BuilderOptions options) =>
+    WebEntrypointBootstrapBuilder();
 
 // Shared entrypoint builder
 Builder webEntrypointBuilder(BuilderOptions options) =>

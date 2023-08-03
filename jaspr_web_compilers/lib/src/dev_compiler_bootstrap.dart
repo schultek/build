@@ -38,6 +38,7 @@ Future<void> bootstrapDdc(
   await _ensureResources(buildStep, requiredAssets);
 
   var dartEntrypointId = buildStep.inputId;
+  var dartEntrypointIdBase = buildStep.inputId.changeExtension('');
   var moduleId = buildStep.inputId.changeExtension(moduleExtension(platform));
   var module = Module.fromJson(json
       .decode(await buildStep.readAsString(moduleId)) as Map<String, dynamic>);
@@ -64,9 +65,9 @@ https://github.com/dart-lang/build/blob/master/docs/faq.md#how-can-i-resolve-ski
   var jsId = module.primarySource.changeExtension(jsModuleExtension);
   var appModuleName = ddcModuleName(jsId);
   var appDigestsOutput =
-      dartEntrypointId.changeExtension(digestsEntrypointExtension);
+      dartEntrypointIdBase.changeExtension(digestsEntrypointExtension);
   var mergedMetadataOutput =
-      dartEntrypointId.changeExtension(mergedMetadataExtension);
+      dartEntrypointIdBase.changeExtension(mergedMetadataExtension);
 
   // The name of the entrypoint dart library within the entrypoint JS module.
   //
@@ -99,7 +100,7 @@ https://github.com/dart-lang/build/blob/master/docs/faq.md#how-can-i-resolve-ski
             : _context.joinAll(_context.split(jsId.path).skip(1)));
   }
 
-  var bootstrapId = dartEntrypointId.changeExtension(ddcBootstrapExtension);
+  var bootstrapId = dartEntrypointIdBase.changeExtension(ddcBootstrapExtension);
   var bootstrapModuleName = _context.withoutExtension(_context.relative(
       bootstrapId.path,
       from: _context.dirname(dartEntrypointId.path)));
@@ -132,7 +133,7 @@ https://github.com/dart-lang/build/blob/master/docs/faq.md#how-can-i-resolve-ski
 
   var entrypointJsContent = _entryPointJs(bootstrapModuleName);
   await buildStep.writeAsString(
-      dartEntrypointId.changeExtension(jsEntrypointExtension),
+      dartEntrypointIdBase.changeExtension(jsEntrypointExtension),
       entrypointJsContent);
 
   // Output the digests and merged_metadata for transitive modules.
