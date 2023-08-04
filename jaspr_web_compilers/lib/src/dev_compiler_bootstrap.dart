@@ -136,24 +136,36 @@ https://github.com/dart-lang/build/blob/master/docs/faq.md#how-can-i-resolve-ski
       dartEntrypointIdBase.changeExtension(jsEntrypointExtension),
       entrypointJsContent);
 
-  // Output the digests and merged_metadata for transitive modules.
-  // These can be consumed for hot reloads and debugging.
-  var mergedMetadataContent = StringBuffer();
-  var moduleDigests = <String, String>{};
-  for (var jsId in transitiveJsModules) {
-    mergedMetadataContent.writeln(
-        await buildStep.readAsString(jsId.changeExtension('.js.metadata')));
-    moduleDigests[_moduleDigestKey(jsId)] = '${await buildStep.digest(jsId)}';
-  }
-  await buildStep.writeAsString(appDigestsOutput, jsonEncode(moduleDigests));
-  await buildStep.writeAsString(
-      mergedMetadataOutput, mergedMetadataContent.toString());
+  await buildStep.trackStage('WriteTransitiveModules', () async {
+    // Output the digests and merged_metadata for transitive modules.
+    // These can be consumed for hot reloads and debugging.
+    var mergedMetadataContent = StringBuffer();
+    var moduleDigests = <String, String>{};
+
+    var content = await Future.wait([
+      for (var jsId in transitiveJsModules) ...[
+        buildStep.readAsString(jsId.changeExtension('.js.metadata')),
+        Future(() async {
+          moduleDigests[_moduleDigestKey(jsId)] =
+              '${await buildStep.digest(jsId)}';
+        }),
+      ]
+    ]);
+
+    for (var c in content.whereType<String>()) {
+      mergedMetadataContent.writeln(c);
+    }
+
+    await buildStep.writeAsString(appDigestsOutput, jsonEncode(moduleDigests));
+    await buildStep.writeAsString(
+        mergedMetadataOutput, mergedMetadataContent.toString());
+  });
 }
 
 String _moduleDigestKey(AssetId jsId) =>
     '${ddcModuleName(jsId)}$jsModuleExtension';
 
-final _lazyBuildPool = Pool(16);
+final _lazyBuildPool = Pool(100);
 
 /// Ensures that all transitive js modules for [module] are available and built.
 ///
@@ -162,25 +174,31 @@ final _lazyBuildPool = Pool(16);
 Future<List<AssetId>> _ensureTransitiveJsModules(
     Module module, BuildStep buildStep) async {
   // Collect all the modules this module depends on, plus this module.
-  var transitiveDeps = await module.computeTransitiveDependencies(buildStep,
-      throwIfUnsupported: true);
+  var transitiveDeps =
+      await buildStep.trackStage('ComputeTransitiveDependencies', () {
+    return module.computeTransitiveDependencies(buildStep,
+        throwIfUnsupported: true);
+  });
 
   var jsModules = [
     module.primarySource.changeExtension(jsModuleExtension),
     for (var dep in transitiveDeps)
       dep.primarySource.changeExtension(jsModuleExtension),
   ];
+
   // Check that each module is readable, and warn otherwise.
-  await Future.wait(jsModules.map((jsId) async {
-    if (await _lazyBuildPool.withResource(() => buildStep.canRead(jsId))) {
-      return;
-    }
-    var errorsId = jsId.addExtension('.errors');
-    await buildStep.canRead(errorsId);
-    log.warning('Unable to read $jsId, check your console or the '
-        '`.dart_tool/build/generated/${errorsId.package}/${errorsId.path}` '
-        'log file.');
-  }));
+  await buildStep.trackStage('CheckTransitiveModules', () {
+    return Future.wait(jsModules.map((jsId) async {
+      if (await _lazyBuildPool.withResource(() => buildStep.canRead(jsId))) {
+        return;
+      }
+      var errorsId = jsId.addExtension('.errors');
+      await buildStep.canRead(errorsId);
+      log.warning('Unable to read $jsId, check your console or the '
+          '`.dart_tool/build/generated/${errorsId.package}/${errorsId.path}` '
+          'log file.');
+    }));
+  });
   return jsModules;
 }
 
