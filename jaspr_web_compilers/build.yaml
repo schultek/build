@@ -99,8 +99,6 @@ builders:
     build_extensions:
       .dart:
         - .bootstrap.dart
-    required_inputs:
-      - .dart
     build_to: cache
     auto_apply: root_package
     defaults:
