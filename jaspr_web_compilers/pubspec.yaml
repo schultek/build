@@ -1,5 +1,5 @@
 name: jaspr_web_compilers
-version: 4.0.5
+version: 4.0.5+2
 description: Builder implementations wrapping the dart2js and DDC compilers.
 repository: https://github.com/schultek/build/tree/master/jaspr_web_compilers
 
