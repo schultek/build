@@ -25,6 +25,7 @@ const _libraries = [
   'web_sql',
   'io',
   'ui',
+  'ui_web',
 ];
 
 final ddcPlatform = DartPlatform.register('ddc', _libraries);
