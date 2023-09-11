@@ -1,3 +1,19 @@
+## 2.3.2
+
+- Skip file delete for SDK summary and deps file. This will only impact behavior
+  for usage in `build_test` where there may be multiple resolvers used
+  concurrently.
+
+## 2.3.1
+
+- Fix a bug in the transitive digest builder, ensure we check if assets are
+  readable before asking for their digest.
+
+## 2.3.0
+
+- Improve performance for resolves by adding a builder which serializes
+  transitive digests to disk.
+
 ## 2.2.1
 
 - Allow the latest analyzer (6.x.x).
