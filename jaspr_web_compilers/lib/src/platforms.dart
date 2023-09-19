@@ -23,7 +23,6 @@ const _libraries = [
   'web_audio',
   'web_gl',
   'web_sql',
-  'io',
   'ui',
   'ui_web',
 ];
