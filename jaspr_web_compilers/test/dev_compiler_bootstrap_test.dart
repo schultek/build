@@ -54,7 +54,7 @@ void main() {
         ])),
       };
       await testBuilder(
-          WebEntrypointBuilder(WebCompiler.DartDevc,
+          const WebEntrypointBuilder(WebCompiler.DartDevc,
               nativeNullAssertions: false),
           assets,
           outputs: expectedOutputs);
@@ -93,7 +93,7 @@ void main() {
         'a|web/b.dart.js': isNotEmpty,
       };
       await testBuilder(
-          WebEntrypointBuilder(WebCompiler.DartDevc,
+          const WebEntrypointBuilder(WebCompiler.DartDevc,
               nativeNullAssertions: false),
           assets,
           outputs: expectedOutputs);
@@ -116,7 +116,7 @@ void main() {
         'a|lib/app.dart.js': isNotEmpty,
       };
       await testBuilder(
-          WebEntrypointBuilder(WebCompiler.DartDevc,
+          const WebEntrypointBuilder(WebCompiler.DartDevc,
               nativeNullAssertions: false),
           assets,
           outputs: expectedOutputs);
@@ -140,7 +140,7 @@ Future<void> runPrerequisites(Map<String, Object> assets) async {
       MetaModuleCleanBuilder(ddcPlatform), assets);
   await testBuilderAndCollectAssets(ModuleBuilder(ddcPlatform), assets);
   await testBuilderAndCollectAssets(
-      ddcKernelBuilder(BuilderOptions({})), assets);
+      ddcKernelBuilder(const BuilderOptions({})), assets);
   await testBuilderAndCollectAssets(
       DevCompilerBuilder(platform: ddcPlatform), assets);
 }

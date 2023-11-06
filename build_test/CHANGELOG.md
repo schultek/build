@@ -1,4 +1,8 @@
-## 2.2.1-dev
+## 2.2.2-wip
+
+- Bump the min sdk to 3.0.0.
+
+## 2.2.1
 
 - Avoid passing a nullable value to `Future.value`.
 - Update to build_resolvers 2.4.0, which resolves some race conditions when

@@ -1,5 +1,5 @@
 name: jaspr_web_compilers
-version: 4.0.5+5
+version: 4.0.6
 description: Builder implementations wrapping the dart2js and DDC compilers.
 repository: https://github.com/schultek/build/tree/master/jaspr_web_compilers
 
@@ -8,7 +8,7 @@ topics:
   - web
 
 environment:
-  sdk: '>=3.0.0 <3.3.0'
+  sdk: '>=3.0.0 <3.4.0'
 
 dependencies:
   analyzer: '>=5.1.0 <7.0.0'
@@ -37,5 +37,5 @@ dev_dependencies:
     path: test/fixtures/b
   build_runner: ^2.0.0
   build_test: ^2.0.0
-  dart_flutter_team_lints: ^1.0.0
+  dart_flutter_team_lints: ^2.0.0
   test: ^1.16.0

@@ -1,4 +1,10 @@
-## 2.4.0-wip
+## 2.4.1
+
+- Fix an issue where deleted files were not removed from the analysis engine,
+  and were still accessible via the analyzer apis.
+- Bump the min sdk to 3.0.0.
+
+## 2.4.0
 
 - Deprecate the unnamed `AnalyzerResolvers` constructor, an replace it with the
   `AnalyzerResolvers.sharedInstance` getter and `AnalyzerResolvers.custom`

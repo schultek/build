@@ -1,3 +1,7 @@
+## 4.0.6
+
+- Allow version 3.3.x of the Dart SDK.
+
 ## 4.0.5
 
 - Allow version 3.2.x of the Dart SDK.

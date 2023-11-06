@@ -32,7 +32,7 @@ class BuildAssetUriResolver extends UriResolver {
   /// A cache of the digest for each Dart asset.
   ///
   /// This is stored across builds and used to invalidate the values in
-  /// [_cachedAssetDependencies] only when the actual content of the library
+  /// [_cachedAssetState] only when the actual content of the library
   /// changed.
   final _cachedAssetDigests = <AssetId, Digest>{};
 
@@ -137,6 +137,7 @@ class BuildAssetUriResolver extends UriResolver {
       _cachedAssetDigests.remove(id);
       if (resourceProvider.getFile(path).exists) {
         resourceProvider.deleteFile(path);
+        _needsChangeFile.add(path);
       }
       return _AssetState(path, const {});
     }
