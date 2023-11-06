@@ -2,6 +2,7 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:build/build.dart';
@@ -12,7 +13,27 @@ final defaultAnalysisOptionsId =
     AssetId('build_modules', 'lib/src/analysis_options.default.yaml');
 
 final sdkDir = p.dirname(p.dirname(Platform.resolvedExecutable));
-final webSdkDir = p.join(p.dirname(sdkDir), 'flutter_web_sdk');
+final webSdkDir = (() {
+  var result = Process.runSync('flutter', ['doctor', '--version', '--machine'],
+      stdoutEncoding: utf8);
+  if ((result.stderr as String).isNotEmpty) {
+    throw UnsupportedError(
+        'Calling "flutter doctor" resulted in: "${result.stderr}". '
+        'Make sure flutter is installed and setup correctly.');
+  }
+  var output = jsonDecode(result.stdout as String);
+  var webSdkPath = p.join(
+      output['flutterRoot'] as String, 'bin', 'cache', 'flutter_web_sdk');
+  if (!Directory(webSdkPath).existsSync()) {
+    Process.runSync('flutter', ['precache', '--web']);
+  }
+  if (!Directory(webSdkPath).existsSync()) {
+    throw UnsupportedError('Could not find flutter web sdk in $webSdkPath. '
+        'Make sure flutter is installed and setup correctly. '
+        'If you think this is a bug, open an issue at https://github.com/schultek/jaspr/issues');
+  }
+  return webSdkPath;
+})();
 
 String defaultAnalysisOptionsArg(ScratchSpace scratchSpace) =>
     '--options=${scratchSpace.fileFor(defaultAnalysisOptionsId).path}';
