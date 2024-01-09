@@ -16,7 +16,7 @@ import 'src/web_plugins_builder.dart';
 
 // Shared entrypoint bootstrap builder
 Builder webEntrypointBootstrapBuilder(BuilderOptions options) =>
-    WebEntrypointBootstrapBuilder();
+    const WebEntrypointBootstrapBuilder();
 
 // Shared entrypoint builder
 Builder webEntrypointBuilder(BuilderOptions options) =>

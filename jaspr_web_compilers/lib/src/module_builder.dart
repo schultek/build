@@ -1,6 +1,8 @@
 import 'package:build/build.dart';
 import 'package:build_modules/build_modules.dart';
+// ignore: implementation_imports
 import 'package:build_modules/src/module_cache.dart';
+// ignore: implementation_imports
 import 'package:build_modules/src/module_library.dart';
 import 'package:collection/collection.dart';
 

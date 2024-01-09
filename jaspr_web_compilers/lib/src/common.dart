@@ -21,7 +21,7 @@ final webSdkDir = (() {
         'Calling "flutter doctor" resulted in: "${result.stderr}". '
         'Make sure flutter is installed and setup correctly.');
   }
-  var output = jsonDecode(result.stdout as String);
+  var output = jsonDecode(result.stdout as String) as Map;
   var webSdkPath = p.join(
       output['flutterRoot'] as String, 'bin', 'cache', 'flutter_web_sdk');
   if (!Directory(webSdkPath).existsSync()) {
