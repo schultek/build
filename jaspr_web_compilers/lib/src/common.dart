@@ -15,7 +15,7 @@ final defaultAnalysisOptionsId =
 final sdkDir = p.dirname(p.dirname(Platform.resolvedExecutable));
 final webSdkDir = (() {
   var result = Process.runSync('flutter', ['doctor', '--version', '--machine'],
-      stdoutEncoding: utf8);
+      stdoutEncoding: utf8, runInShell: true);
   if ((result.stderr as String).isNotEmpty) {
     throw UnsupportedError(
         'Calling "flutter doctor" resulted in: "${result.stderr}". '
@@ -25,7 +25,7 @@ final webSdkDir = (() {
   var webSdkPath = p.join(
       output['flutterRoot'] as String, 'bin', 'cache', 'flutter_web_sdk');
   if (!Directory(webSdkPath).existsSync()) {
-    Process.runSync('flutter', ['precache', '--web']);
+    Process.runSync('flutter', ['precache', '--web'], runInShell: true);
   }
   if (!Directory(webSdkPath).existsSync()) {
     throw UnsupportedError('Could not find flutter web sdk in $webSdkPath. '
