@@ -6,11 +6,6 @@ import 'package:build_modules/src/module_cache.dart';
 import 'package:build_modules/src/module_library.dart';
 import 'package:collection/collection.dart';
 
-const flutterPackages = {
-  'flutter',
-  'flutter_test',
-};
-
 class JasprModuleBuilder extends ModuleBuilder {
   final DartPlatform platform;
 
@@ -36,14 +31,6 @@ class JasprModuleBuilder extends ModuleBuilder {
       }
     }
     if (outputModule == null) return;
-
-    if (flutterPackages.contains(buildStep.inputId.package)) {
-      if (!outputModule.isSupported) {
-        outputModule = Module(outputModule.primarySource, outputModule.sources,
-            outputModule.directDependencies, outputModule.platform, true,
-            isMissing: outputModule.isMissing);
-      }
-    }
 
     final modules = await buildStep.fetchResource(moduleCache);
     await modules.write(
