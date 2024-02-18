@@ -35,18 +35,12 @@ class WebEntrypointBootstrapBuilder implements Builder {
     var hasWebPlugins = await buildStep.canRead(
         AssetId(dartEntrypointId.package, 'lib/web_plugin_registrant.dart'));
 
-    var packageConfig = await buildStep.packageConfig;
-    var usesFlutterEmbed = packageConfig['jaspr_flutter_embed'] != null;
-
     await buildStep.writeAsString(appEntrypointId, '''
-import 'dart:ui' as ui;
 
 import '${p.basename(dartEntrypointId.path)}' as app;
-${usesFlutterEmbed ? "import 'package:jaspr_flutter_embed/jaspr_flutter_embed.dart';" : ''}
 ${hasWebPlugins ? "import 'package:${dartEntrypointId.package}/web_plugin_registrant.dart';" : ''}
 
 Future<void> main() async {
-  ${usesFlutterEmbed ? 'FlutterEmbedBinding.warmupFlutterEngine = ui.webOnlyWarmupEngine;' : ''}
   ${hasWebPlugins ? 'registerPlugins();' : ''}
   return app.main();
 }
