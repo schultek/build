@@ -176,8 +176,7 @@ Future<List<AssetId>> _ensureTransitiveJsModules(
   // Collect all the modules this module depends on, plus this module.
   var transitiveDeps =
       await buildStep.trackStage('ComputeTransitiveDependencies', () {
-    return module.computeTransitiveDependencies(buildStep,
-        throwIfUnsupported: true);
+    return module.computeTransitiveDependencies(buildStep);
   });
 
   var jsModules = [

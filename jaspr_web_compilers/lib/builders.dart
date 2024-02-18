@@ -9,7 +9,6 @@ import 'package:path/path.dart' as p;
 
 import 'jaspr_web_compilers.dart';
 import 'src/common.dart';
-import 'src/module_builder.dart';
 import 'src/sdk_js_copy_builder.dart';
 import 'src/web_entrypoint_bootstrap_builder.dart';
 import 'src/web_plugins_builder.dart';
@@ -28,7 +27,7 @@ Builder webPluginsBuilder(_) => WebPluginsBuilder();
 Builder ddcMetaModuleBuilder(BuilderOptions options) =>
     MetaModuleBuilder.forOptions(ddcPlatform, options);
 Builder ddcMetaModuleCleanBuilder(_) => MetaModuleCleanBuilder(ddcPlatform);
-Builder ddcModuleBuilder([_]) => JasprModuleBuilder(ddcPlatform);
+Builder ddcModuleBuilder([_]) => ModuleBuilder(ddcPlatform);
 
 Builder ddcBuilder(BuilderOptions options) {
   validateOptions(options.config, _supportedOptions, 'jaspr_web_compilers:ddc');
@@ -72,7 +71,7 @@ Builder dart2jsMetaModuleBuilder(BuilderOptions options) =>
     MetaModuleBuilder.forOptions(dart2jsPlatform, options);
 Builder dart2jsMetaModuleCleanBuilder(_) =>
     MetaModuleCleanBuilder(dart2jsPlatform);
-Builder dart2jsModuleBuilder([_]) => JasprModuleBuilder(dart2jsPlatform);
+Builder dart2jsModuleBuilder([_]) => ModuleBuilder(dart2jsPlatform);
 PostProcessBuilder dart2jsArchiveExtractor(BuilderOptions options) =>
     Dart2JsArchiveExtractor.fromOptions(options);
 
