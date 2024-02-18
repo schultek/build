@@ -1,3 +1,12 @@
+## 4.0.9
+
+- Support latest version of `package:js`.
+- Allow `dart:_js_annotations` on web platforms.
+
+## 4.0.8
+
+- Allow version 3.4.x of the Dart SDK.
+
 ## 4.0.7
 
 - Support `dart:js_interop_unsafe`.
