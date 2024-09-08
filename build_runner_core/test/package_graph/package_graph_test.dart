@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 @TestOn('vm')
+library;
+
 import 'package:build_runner_core/build_runner_core.dart';
 import 'package:package_config/package_config_types.dart';
 import 'package:path/path.dart' as p;
@@ -25,12 +27,12 @@ void main() {
         final buildRunner =
             config.packages.singleWhere((p) => p.name == 'build_runner_core');
 
-        expect(buildRunner.languageVersion, LanguageVersion(3, 0));
+        expect(buildRunner.languageVersion, LanguageVersion(3, 5));
       });
     });
 
     group('basic package ', () {
-      var basicPkgPath = 'test/fixtures/basic_pkg';
+      var basicPkgPath = 'test/fixtures/basic_pkg/';
 
       setUp(() async {
         graph = await PackageGraph.forPath(basicPkgPath);
@@ -150,6 +152,42 @@ void main() {
           () => PackageGraph.forPath(
               p.join('test', 'fixtures', 'no_packages_file')),
           throwsA(anything));
+    });
+  });
+
+  group('workspace ', () {
+    var workspaceFixturePath = 'test/fixtures/workspace';
+
+    test('Loads all packages in workspace. Has correct root', () async {
+      Matcher packageNodeEquals(PackageNode node) => isA<PackageNode>()
+          .having((c) => c.path, 'path', node.path)
+          .having((c) => c.dependencies, 'dependencies',
+              node.dependencies.map(packageNodeEquals))
+          .having(
+              (c) => c.dependencyType, 'dependencyType', node.dependencyType);
+
+      final graph = await PackageGraph.forPath('$workspaceFixturePath/pkgs/a');
+      var a = PackageNode(
+          'a', '$workspaceFixturePath/pkgs/a', DependencyType.path, null,
+          isRoot: true);
+      var b = PackageNode(
+          'b', '$workspaceFixturePath/pkgs/b', DependencyType.path, null);
+      a.dependencies.add(b);
+      var workspace = PackageNode(
+        'workspace',
+        workspaceFixturePath,
+        DependencyType.path,
+        null,
+      );
+
+      expect(graph.allPackages, {
+        'a': packageNodeEquals(a),
+        'b': packageNodeEquals(b),
+        'workspace': packageNodeEquals(workspace),
+        r'$sdk': anything
+      });
+
+      expect(graph.root, packageNodeEquals(a));
     });
   });
 }

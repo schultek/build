@@ -1,3 +1,15 @@
+## 4.0.12-wip
+
+- Account for dartdevc snapshot in the Dart SDK changing to an AOT snapshot.
+- Support compiling to WebAssembly by using `dart2wasm` as a value for the
+  compiler option.
+- Bump the min sdk to 3.6.0-165.0.dev.
+
+## 4.0.11
+
+- Bump the min sdk to 3.5.0-259.0.dev.
+- Allow version 3.6.x of the Dart SDK.
+
 ## 4.0.10
 
 - Allow version 3.5.x of the Dart SDK.

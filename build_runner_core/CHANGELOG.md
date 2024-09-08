@@ -1,3 +1,20 @@
+## 7.3.3-wip
+
+- Bump the min sdk to 3.5.0.
+
+## 7.3.2
+
+- Additional fixes for pub workspace repos
+- Migrate deprecates uses of `whereNotNull()` to `nonNulls`.
+- Bump the min sdk to 3.5.0-259.0.dev.
+
+## 7.3.1
+
+- Support the upcoming pub workspaces feature.
+- Bump the min sdk to 3.4.0.
+- Remove some unnecessary casts and non-null assertions now that we have private
+  field promotion.
+
 ## 7.3.0
 
 - Bump the min sdk to 3.0.0.

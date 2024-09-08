@@ -1,0 +1,9 @@
+name: c
+resolution: workspace
+
+environment:
+  sdk: ^3.6.0-165.0.dev
+
+dependencies:
+  d:
+    path: ../d

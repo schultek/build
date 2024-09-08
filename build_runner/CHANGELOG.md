@@ -1,4 +1,26 @@
-## 2.4.9-wip
+## 2.4.13-wip
+
+- Bump the min sdk to 3.5.0.
+
+## 2.4.12
+
+- Bump the min sdk to 3.5.0-259.0.dev.
+- Fix watch mode for workspace repos.
+
+## 2.4.11
+
+- Explicitly pass the current isolates package config instead of assuming the
+  location, to support the upcoming pub workspaces feature.
+
+## 2.4.10
+
+- Support version `1.x` and `2.x` of `shelf_web_socket` and `2.x` and `3.x`
+- of `web_socket_channel`.
+- Bump the min sdk to 3.4.0.
+
+## 2.4.9
+
+- Update the `package:frontend_server_client` constraint to `>=3.0.0 <5.0.0`.
 
 ## 2.4.8
 

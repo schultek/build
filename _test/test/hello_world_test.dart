@@ -3,10 +3,13 @@
 // BSD-style license that can be found in the LICENSE file.
 
 @TestOn('browser')
-import 'dart:html';
+library;
+
+import 'dart:js_interop';
 
 import 'package:_test/app.dart';
 import 'package:test/test.dart';
+import 'package:web/web.dart';
 
 //import_anchor
 
@@ -16,11 +19,11 @@ void main() {
   setUp(startApp);
 
   tearDown(() {
-    document.body!.innerHtml = '';
+    document.body!.innerHTML = ''.toJS;
   });
 
   test('hello world', () {
-    expect(document.body!.text, contains(message));
+    expect(document.body!.innerText, contains(message));
   });
 
   test('failing test', skip: 'Expected failure', () {
