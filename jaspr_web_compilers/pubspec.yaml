@@ -32,9 +32,9 @@ dependencies:
 
 dev_dependencies:
   a:
-    path:  test/fixtures/a
+    path: ../build_modules/test/fixtures/a
   b:
-    path: test/fixtures/b
+    path: ../build_modules/test/fixtures/b
   build_runner: ^2.0.0
   build_test: ^2.0.0
   c:

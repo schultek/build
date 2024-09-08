@@ -38,8 +38,7 @@ Future<void> _bootstrapDart2Wasm(
             as Map<String, dynamic>);
     List<Module> allDeps;
     try {
-      allDeps = (await module.computeTransitiveDependencies(buildStep,
-          throwIfUnsupported: true))
+      allDeps = (await module.computeTransitiveDependencies(buildStep))
         ..add(module);
     } on UnsupportedModules catch (e) {
       var librariesString = (await e.exactLibraries(buildStep).toList())
