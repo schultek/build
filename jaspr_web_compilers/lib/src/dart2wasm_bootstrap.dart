@@ -36,6 +36,7 @@ Future<void> _bootstrapDart2Wasm(
   String javaScriptModuleExtension,
 ) async {
   var dartEntrypointId = buildStep.inputId;
+  var dartEntrypointIdBase = buildStep.inputId.changeExtension('');
   var moduleId =
       dartEntrypointId.changeExtension(moduleExtension(dart2wasmPlatform));
   var args = <String>[];
@@ -71,9 +72,10 @@ https://github.com/dart-lang/build/blob/master/docs/faq.md#how-can-i-resolve-ski
         ? Uri.parse('package:${dartEntrypointId.package}/'
             '${dartEntrypointId.path.substring('lib/'.length)}')
         : Uri.parse('$multiRootScheme:///${dartEntrypointId.path}');
-    var wasmOutputPath = p.withoutExtension(dartUri.scheme == 'package'
-            ? 'packages/${dartUri.path}'
-            : dartUri.path.substring(1)) +
+    var wasmOutputPath = p.withoutExtension(p.withoutExtension(
+            dartUri.scheme == 'package'
+                ? 'packages/${dartUri.path}'
+                : dartUri.path.substring(1))) +
         wasmExtension;
 
     args = [
@@ -101,19 +103,19 @@ https://github.com/dart-lang/build/blob/master/docs/faq.md#how-can-i-resolve-ski
       ],
       workingDirectory: scratchSpace.tempDir.path);
 
-  var wasmOutputId = dartEntrypointId.changeExtension(wasmExtension);
+  var wasmOutputId = dartEntrypointIdBase.changeExtension(wasmExtension);
   var wasmOutputFile = scratchSpace.fileFor(wasmOutputId);
   if (result.exitCode == 0 && await wasmOutputFile.exists()) {
     log.info('${result.stdout}\n${result.stderr}');
 
     await scratchSpace.copyOutput(
-        dartEntrypointId.changeExtension(wasmExtension), buildStep);
+        dartEntrypointIdBase.changeExtension(wasmExtension), buildStep);
 
     final loaderContents = await scratchSpace
-        .fileFor(dartEntrypointId.changeExtension(moduleJsExtension))
+        .fileFor(dartEntrypointIdBase.changeExtension(moduleJsExtension))
         .readAsBytes();
     await buildStep.writeAsBytes(
-        dartEntrypointId.changeExtension(javaScriptModuleExtension),
+        dartEntrypointIdBase.changeExtension(javaScriptModuleExtension),
         loaderContents);
   } else {
     log.severe('ExitCode:${result.exitCode}\nStdOut:\n${result.stdout}\n'
