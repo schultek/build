@@ -1,8 +1,15 @@
-## 4.0.12-wip
+## 4.1.0-beta.1
 
-- Account for dartdevc snapshot in the Dart SDK changing to an AOT snapshot.
+- Fix loading compiled modules from subdirectories.
+- Stop using deprecated wasm loader functions.
+
+## 4.1.0-beta.0
+
 - Support compiling to WebAssembly by using `dart2wasm` as a value for the
   compiler option.
+- Support compiling with multiple compilers (e.g. `dart2js` and `dart2wasm`)
+  with a new `compilers` option.
+- Account for dartdevc snapshot in the Dart SDK changing to an AOT snapshot.
 - Bump the min sdk to 3.6.0-165.0.dev.
 
 ## 4.0.11

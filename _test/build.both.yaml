@@ -3,9 +3,10 @@ targets:
     builders:
       build_web_compilers:entrypoint:
         options:
-          compiler: dart2js
-          dart2js_args:
-          - --enable-asserts
+          compilers:
+            dart2wasm:
+            dart2js:
+          loader: .dart.js
         generate_for:
           - web/main.dart
           - web/sub/main.dart

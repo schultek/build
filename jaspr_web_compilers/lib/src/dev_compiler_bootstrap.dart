@@ -31,6 +31,7 @@ Future<void> bootstrapDdc(
   BuildStep buildStep, {
   DartPlatform? platform,
   Iterable<AssetId> requiredAssets = const [],
+  String entrypointExtension = jsEntrypointExtension,
   required bool? nativeNullAssertions,
 }) async {
   platform = ddcPlatform;
@@ -133,7 +134,7 @@ https://github.com/dart-lang/build/blob/master/docs/faq.md#how-can-i-resolve-ski
 
   var entrypointJsContent = _entryPointJs(bootstrapModuleName);
   await buildStep.writeAsString(
-      dartEntrypointIdBase.changeExtension(jsEntrypointExtension),
+      dartEntrypointIdBase.changeExtension(entrypointExtension),
       entrypointJsContent);
 
   await buildStep.trackStage('WriteTransitiveModules', () async {
