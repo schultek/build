@@ -5,7 +5,7 @@
 import 'package:build_modules/build_modules.dart';
 
 /// `dart:` SDK libraries available in every platform supported by
-/// build_web_compilers.
+/// jaspr_web_compilers.
 const _coreLibraries = [
   '_internal',
   '_js_annotations',

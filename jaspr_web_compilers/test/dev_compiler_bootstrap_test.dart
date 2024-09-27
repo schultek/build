@@ -134,9 +134,9 @@ void main() {
 Future<void> runPrerequisites(Map<String, Object> assets) async {
   // Uses the real sdk copy builder to copy required files from the SDK.
   //
-  // It is necessary to add a fake asset so that the build_web_compilers
+  // It is necessary to add a fake asset so that the jaspr_web_compilers
   // package exists.
-  var sdkAssets = <String, Object>{'build_web_compilers|fake.txt': ''};
+  var sdkAssets = <String, Object>{'jaspr_web_compilers|fake.txt': ''};
   await testBuilderAndCollectAssets(sdkJsCopy(null), sdkAssets);
   assets.addAll(sdkAssets);
 

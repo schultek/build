@@ -53,7 +53,7 @@ builders:
     required_inputs: [".dart", ".module.library"]
     applies_builders: ["build_modules:module_cleanup"]
   dart2wasm_modules:
-    import: "package:build_web_compilers/builders.dart"
+    import: "package:jaspr_web_compilers/builders.dart"
     builder_factories:
       - dart2wasmMetaModuleBuilder
       - dart2wasmMetaModuleCleanBuilder
@@ -107,7 +107,7 @@ builders:
       # This isn't really the best place to apply these, but it is the only
       # place we can (its the only builder which runs on all packages).
       - jaspr_web_compilers:dart2js_modules
-      - build_web_compilers:dart2wasm_modules
+      - jaspr_web_compilers:dart2wasm_modules
       - jaspr_web_compilers:dart_source_cleanup
   entrypoint_bootstrap:
     import: "package:jaspr_web_compilers/builders.dart"
