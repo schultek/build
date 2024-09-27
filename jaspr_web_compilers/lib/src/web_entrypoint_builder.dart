@@ -315,7 +315,8 @@ class WebEntrypointBuilder implements Builder {
       }
     }
     await Future.wait(compilationSteps);
-    if (_generateLoader(buildStep.inputId) case (var id, var loader)?) {
+    if (_generateLoader(buildStep.inputId.changeExtension(''))
+        case (var id, var loader)?) {
       await buildStep.writeAsString(id, loader);
     }
   }
