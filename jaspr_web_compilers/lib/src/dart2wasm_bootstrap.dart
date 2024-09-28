@@ -10,6 +10,7 @@ import 'package:build/experiments.dart';
 import 'package:build_modules/build_modules.dart';
 import 'package:path/path.dart' as p;
 import 'package:pool/pool.dart';
+import 'package:scratch_space/scratch_space.dart';
 
 import 'common.dart';
 import 'platforms.dart';
@@ -117,8 +118,25 @@ https://github.com/dart-lang/build/blob/master/docs/faq.md#how-can-i-resolve-ski
     await buildStep.writeAsBytes(
         dartEntrypointIdBase.changeExtension(javaScriptModuleExtension),
         loaderContents);
+
+    var wasmSourceMapId =
+        dartEntrypointIdBase.changeExtension(wasmSourceMapExtension);
+    await _copyModifiedSourceMap(wasmSourceMapId, scratchSpace, buildStep);
   } else {
     log.severe('ExitCode:${result.exitCode}\nStdOut:\n${result.stdout}\n'
         'StdErr:\n${result.stderr}');
+  }
+}
+
+/// If [id] exists, modifies it to something the browser can understand and
+/// writes it using [writer].
+Future<void> _copyModifiedSourceMap(
+    AssetId id, ScratchSpace scratchSpace, AssetWriter writer) async {
+  var file = scratchSpace.fileFor(id);
+  if (await file.exists()) {
+    var content = await file.readAsString();
+    var json = jsonDecode(content) as Map<String, Object?>;
+    json['sources'] = fixSourceMapSources((json['sources'] as List).cast());
+    await writer.writeAsString(id, jsonEncode(json));
   }
 }
