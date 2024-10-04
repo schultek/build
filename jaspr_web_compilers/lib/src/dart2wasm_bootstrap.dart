@@ -78,9 +78,12 @@ https://github.com/dart-lang/build/blob/master/docs/faq.md#how-can-i-resolve-ski
                 : dartUri.path.substring(1))) +
         wasmExtension;
 
+    var wasmPlatformPath =
+        p.join(webSdkDir, 'kernel', 'dart2wasm_platform.dill');
+
     args = [
       '--packages=$multiRootScheme:///.dart_tool/package_config.json',
-      '--extra-compiler-option=--platform=${p.join(webSdkDir, 'kernel', 'dart2wasm_platform.dill')}',
+      '--extra-compiler-option=--platform=$wasmPlatformPath',
       // The -E prefix is removed by dartdev when starting the actual dart2wasm
       // process.
       '-E--multi-root-scheme=$multiRootScheme',
