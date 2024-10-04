@@ -115,7 +115,8 @@ https://github.com/dart-lang/build/blob/master/docs/faq.md#how-can-i-resolve-ski
   if (result.exitCode == 0 && await jsOutputFile.exists()) {
     log.info('${result.stdout}\n${result.stderr}');
     var rootDir = p.dirname(jsOutputFile.path);
-    var baseInputName = p.basenameWithoutExtension(jsOutputId.path);
+    var baseInputName =
+        p.withoutExtension(p.basenameWithoutExtension(jsOutputId.path));
     var fileGlob = Glob('$baseInputName$entrypointExtension*');
     var archive = Archive();
     await for (var jsFile in fileGlob.list(root: rootDir)) {
