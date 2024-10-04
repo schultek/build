@@ -1,0 +1,190 @@
+targets:
+  $default:
+    builders:
+      jaspr_web_compilers:entrypoint:
+        options:
+          compiler: dart2js
+          dart2js_args:
+            - -O4
+        enabled: true
+        generate_for:
+          - web/stack_trace_mapper.dart
+      jaspr_web_compilers:_stack_trace_mapper_copy:
+        enabled: true
+      jaspr_web_compilers:sdk_js:
+        enabled: true
+builders:
+  sdk_js:
+    import: "package:jaspr_web_compilers/builders.dart"
+    builder_factories:
+      - sdkJsCopy
+    build_extensions:
+      $package$:
+        - lib/src/dev_compiler/dart_sdk.js
+        - lib/src/dev_compiler/dart_sdk.js.map
+        - lib/src/dev_compiler/require.js
+    is_optional: True
+    auto_apply: none
+    runs_before: ["jaspr_web_compilers:entrypoint"]
+  web_plugins:
+    import: "package:jaspr_web_compilers/builders.dart"
+    builder_factories:
+      - webPluginsBuilder
+    build_extensions:
+      $package$:
+        - lib/web_plugin_registrant.dart
+    build_to: cache
+    auto_apply: root_package
+    runs_before: [ "jaspr_web_compilers:entrypoint_bootstrap" ]
+  dart2js_modules:
+    import: "package:jaspr_web_compilers/builders.dart"
+    builder_factories:
+      - dart2jsMetaModuleBuilder
+      - dart2jsMetaModuleCleanBuilder
+      - dart2jsModuleBuilder
+    build_extensions:
+      $lib$:
+        - .dart2js.meta_module.raw
+        - .dart2js.meta_module.clean
+      .dart:
+        - .dart2js.module
+    is_optional: True
+    auto_apply: none
+    required_inputs: [".dart", ".module.library"]
+    applies_builders: ["build_modules:module_cleanup"]
+  dart2wasm_modules:
+    import: "package:jaspr_web_compilers/builders.dart"
+    builder_factories:
+      - dart2wasmMetaModuleBuilder
+      - dart2wasmMetaModuleCleanBuilder
+      - dart2wasmModuleBuilder
+    build_extensions:
+      $lib$:
+        - .dart2wasm.meta_module.raw
+        - .dart2wasm.meta_module.clean
+      .dart:
+        - .dart2wasm.module
+    is_optional: True
+    auto_apply: none
+    required_inputs: [".dart", ".module.library"]
+    applies_builders: ["build_modules:module_cleanup"]
+  ddc_modules:
+    import: "package:jaspr_web_compilers/builders.dart"
+    builder_factories:
+      - ddcMetaModuleBuilder
+      - ddcMetaModuleCleanBuilder
+      - ddcModuleBuilder
+    build_extensions:
+      $lib$:
+        - .ddc.meta_module.raw
+        - .ddc.meta_module.clean
+      .dart:
+        - .ddc.module
+    is_optional: True
+    auto_apply: none
+    required_inputs: [".dart", ".module.library"]
+    applies_builders: ["build_modules:module_cleanup"]
+  ddc:
+    import: "package:jaspr_web_compilers/builders.dart"
+    builder_factories:
+      - ddcKernelBuilder
+      - ddcBuilder
+    build_extensions:
+      .ddc.module:
+        - .ddc.dill
+        - .ddc.full.dill
+        - .ddc.js.errors
+        - .ddc.js
+        - .ddc.js.map
+        - .ddc.js.metadata
+        - .ddc.js.symbols
+    is_optional: True
+    auto_apply: all_packages
+    required_inputs:
+      - .ddc.module
+    applies_builders:
+      - jaspr_web_compilers:ddc_modules
+      # This isn't really the best place to apply these, but it is the only
+      # place we can (its the only builder which runs on all packages).
+      - jaspr_web_compilers:dart2js_modules
+      - jaspr_web_compilers:dart2wasm_modules
+      - jaspr_web_compilers:dart_source_cleanup
+  entrypoint_bootstrap:
+    import: "package:jaspr_web_compilers/builders.dart"
+    builder_factories:
+      - webEntrypointBootstrapBuilder
+    build_extensions:
+      .dart:
+        - .bootstrap.dart
+    build_to: cache
+    auto_apply: root_package
+    defaults:
+      generate_for:
+        include:
+          - web/**
+          - test/**.dart.browser_test.dart
+          - example/**
+          - benchmark/**
+        exclude:
+          - test/**.node_test.dart
+          - test/**.vm_test.dart
+    applies_builders:
+      - jaspr_web_compilers:entrypoint
+  entrypoint:
+    import: "package:jaspr_web_compilers/builders.dart"
+    builder_factories:
+      - webEntrypointBuilder
+    build_extensions:
+      .bootstrap.dart:
+        - .dart.bootstrap.js
+        - .dart.js
+        - .dart.js.map
+        - .dart.js.tar.gz
+        - .digests
+        - .dart.ddc_merged_metadata
+        - .wasm
+        - .mjs
+    required_inputs:
+      - .bootstrap.dart
+      - .ddc.js
+      - .ddc.module
+      - .dart2js.module
+      - .dart2wasm.module
+    build_to: cache
+    auto_apply: root_package
+    defaults:
+      options:
+        dart2js_args:
+          - --minify
+      dev_options:
+        dart2wasm_args:
+          - --enable-asserts
+        dart2js_args:
+          - --enable-asserts
+      release_options:
+        compiler: dart2js
+    applies_builders:
+      - jaspr_web_compilers:dart2js_archive_extractor
+  _stack_trace_mapper_copy:
+    import: "tool/copy_builder.dart"
+    builder_factories:
+        - copyBuilder
+    build_extensions:
+      web/stack_trace_mapper.dart.js:
+        - lib/src/dev_compiler_stack_trace/stack_trace_mapper.dart.js
+    auto_apply: none
+    build_to: source
+    required_inputs: [".dart.js"]
+post_process_builders:
+  dart2js_archive_extractor:
+    import: "package:jaspr_web_compilers/builders.dart"
+    builder_factory: dart2jsArchiveExtractor
+    defaults:
+      release_options:
+        filter_outputs: true
+  dart_source_cleanup:
+    import: "package:jaspr_web_compilers/builders.dart"
+    builder_factory: dartSourceCleanup
+    defaults:
+      release_options:
+        enabled: true
