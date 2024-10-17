@@ -16,12 +16,20 @@ final sdkDir = p.dirname(p.dirname(Platform.resolvedExecutable));
 final webSdkDir = (() {
   var result = Process.runSync('flutter', ['doctor', '--version', '--machine'],
       stdoutEncoding: utf8, runInShell: true);
-  if ((result.stderr as String).isNotEmpty) {
+  if (result.exitCode < 0) {
     throw UnsupportedError(
         'Calling "flutter doctor" resulted in: "${result.stderr}". '
         'Make sure flutter is installed and setup correctly.');
   }
-  var output = jsonDecode(result.stdout as String) as Map;
+  final Map output;
+  try {
+    output = jsonDecode(result.stdout as String) as Map;
+  } catch (e) {
+    throw UnsupportedError('Could not find flutter web sdk. '
+        'Calling "flutter doctor" resulted in: "result.stdout". '
+        'Make sure flutter is installed and setup correctly. '
+        'If you think this is a bug, open an issue at https://github.com/schultek/jaspr/issues');
+  }
   var webSdkPath = p.join(
       output['flutterRoot'] as String, 'bin', 'cache', 'flutter_web_sdk');
   if (!Directory(webSdkPath).existsSync()) {
