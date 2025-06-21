@@ -75,9 +75,9 @@ StackTrace mapStackTrace(
           sourceUrl.startsWith(
             'package:jaspr_web_compilers/src/dev_compiler/dart_sdk.',
           )) {
-        // This compresses the long dart_sdk URLs if SDK source maps are missing.
-        // It's no longer linkable, but neither are the properly mapped ones
-        // above.
+        // This compresses the long dart_sdk URLs if SDK source maps are 
+        // missing. It's no longer linkable, but neither are the properly 
+        // mapped ones above.
         sourceUrl = 'dart:sdk_internal';
       }
 
