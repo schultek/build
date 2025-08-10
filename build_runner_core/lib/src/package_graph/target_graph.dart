@@ -7,9 +7,11 @@ import 'dart:async';
 import 'package:build/build.dart';
 import 'package:build_config/build_config.dart';
 import 'package:glob/glob.dart';
+import 'package:path/path.dart' as p;
 
 import '../generate/input_matcher.dart';
 import '../generate/options.dart' show defaultNonRootVisibleAssets;
+import '../logging/build_log.dart';
 import 'package_graph.dart';
 
 /// Like a [PackageGraph] but packages are further broken down into modules
@@ -44,6 +46,9 @@ class TargetGraph {
 
   /// Builds a [TargetGraph] from [packageGraph].
   ///
+  /// Pass [reader] to read package configs. Otherwise, default configs are
+  /// used.
+  ///
   /// The [overrideBuildConfig] map overrides the config for packages by name.
   ///
   /// The [defaultRootPackageSources] is the default `sources` list to use
@@ -56,6 +61,7 @@ class TargetGraph {
   /// warning is logged if this condition is not met.
   static Future<TargetGraph> forPackageGraph(
     PackageGraph packageGraph, {
+    AssetReader? reader,
     Map<String, BuildConfig> overrideBuildConfig = const {},
     required List<String> defaultRootPackageSources,
     List<String> requiredSourcePaths = const [],
@@ -68,7 +74,7 @@ class TargetGraph {
     for (final package in packageGraph.allPackages.values) {
       final config =
           overrideBuildConfig[package.name] ??
-          await _packageBuildConfig(package);
+          await _packageBuildConfig(reader, package);
       List<String> defaultInclude;
       if (package.isRoot) {
         defaultInclude = [
@@ -105,7 +111,7 @@ class TargetGraph {
         );
         var missing = _missingSources(nodes, requiredIds);
         if (missing.isNotEmpty) {
-          log.warning(
+          buildLog.warning(
             'The package `${package.name}` does not include some required '
             'sources in any of its targets (see their build.yaml file).\n'
             'The missing sources are:\n'
@@ -218,25 +224,38 @@ class TargetNode {
   String toString() => target.key;
 }
 
-Future<BuildConfig> _packageBuildConfig(PackageNode package) async {
-  final dependencyNames = package.dependencies.map((n) => n.name);
+Future<BuildConfig> _packageBuildConfig(
+  AssetReader? reader,
+  PackageNode package,
+) async {
+  final dependencies = [for (final node in package.dependencies) node.name];
   try {
-    return await BuildConfig.fromBuildConfigDir(
-      package.name,
-      dependencyNames,
-      package.path,
-    );
+    final id = AssetId(package.name, 'build.yaml');
+    if (reader != null && await reader.canRead(id)) {
+      return BuildConfig.parse(
+        package.name,
+        dependencies,
+        await reader.readAsString(id),
+        configYamlPath: p.join(package.path, 'build.yaml'),
+      );
+    } else {
+      return BuildConfig.useDefault(package.name, dependencies);
+    }
   } on ArgumentError // ignore: avoid_catching_errors
   catch (e) {
-    throw BuildConfigParseException(package.name, e);
+    throw BuildConfigParseException(package.name, e.toString());
   }
 }
 
 class BuildConfigParseException implements Exception {
   final String packageName;
-  final dynamic exception;
+  final String message;
 
-  BuildConfigParseException(this.packageName, this.exception);
+  BuildConfigParseException(this.packageName, this.message);
+
+  @override
+  String toString() =>
+      'Failed to parse `build.yaml` for $packageName: $message';
 }
 
 /// Returns the [sources] are not included in any [targets].

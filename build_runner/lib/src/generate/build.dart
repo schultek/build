@@ -11,7 +11,6 @@ import 'package:logging/logging.dart';
 import 'package:shelf/shelf.dart';
 import 'package:watcher/watcher.dart';
 
-import '../logging/std_io_logging.dart';
 import '../package_graph/build_config_overrides.dart';
 import '../server/server.dart';
 import 'terminator.dart';
@@ -81,25 +80,21 @@ Future<BuildResult> build(
   packageGraph ??= await PackageGraph.forThisPackage();
   skipBuildScriptCheck ??= false;
   trackPerformance ??= false;
-  verbose ??= false;
   var environment = BuildEnvironment(
     packageGraph,
     assumeTty: assumeTty,
     outputSymlinksOnly: outputSymlinksOnly,
     reader: reader,
     writer: writer,
-    onLogOverride:
-        onLog ?? stdIOLogListener(assumeTty: assumeTty, verbose: verbose),
   );
-  var logSubscription = LogSubscription(
-    environment,
-    verbose: verbose,
-    logLevel: logLevel,
-  );
+  buildLog.configuration = buildLog.configuration.rebuild((b) {
+    if (verbose != null) b.verbose = verbose;
+    b.onLog = onLog;
+  });
   var options = await BuildOptions.create(
-    logSubscription,
-    deleteFilesByDefault: deleteFilesByDefault,
     packageGraph: packageGraph,
+    reader: environment.reader,
+    deleteFilesByDefault: deleteFilesByDefault,
     skipBuildScriptCheck: skipBuildScriptCheck,
     overrideBuildConfig: await findBuildConfigOverrides(
       packageGraph,
@@ -129,7 +124,6 @@ Future<BuildResult> build(
     return result;
   } finally {
     await terminator.cancel();
-    await options.logListener.cancel();
   }
 }
 
@@ -186,7 +180,6 @@ Future<ServeHandler> watch(
   reader: reader,
   writer: writer,
   resolvers: resolvers,
-  logLevel: logLevel,
   onLog: onLog,
   debounceDelay: debounceDelay,
   directoryWatcherFactory: directoryWatcherFactory,

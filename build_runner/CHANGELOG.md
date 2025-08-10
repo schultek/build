@@ -1,9 +1,68 @@
-## 2.4.16-wip
+## 2.6.1
+
+- Use `build` 3.0.1.
+
+## 2.6.0
+
+- Remove unused deps: `analyzer`, `build_resolvers`, `collection`, `http`,
+  `js`, `meta`, `package_config`, `pool`, `web`, `yaml`.
+- Remove unused dev_deps: `http`, `package_config`, `web`.
+- Testing: read build configs using `AssetReader` so they're easier to test.
+- Use `build` 3.0.0.
+- Use `build_resolvers` 3.0.0.
+
+## 2.6.0-dev.2
+
+- Remove unused deps: `analyzer`, `build_resolvers`, `collection`, `http`,
+  `js`, `meta`, `package_config`, `pool`, `web`, `yaml`.
+- Remove unused dev_deps: `http`, `package_config`, `web`.
+- Testing: read build configs using `AssetReader` so they're easier to test.
+
+## 2.6.0-dev.1
+
+- Use `build` 3.0.0-dev.
+- Use `build_resolvers` 3.0.0-dev.
+
+## 2.5.4
+
+- Bug fix: fix incremental build when previous build had `package:` import of
+  a missing dep or a missing file.
+
+## 2.5.3
+
+- Bug fix: fix corner case with checked in generated output that could cause
+  a crash.
+- Bug fix: during initial build cleanup, really delete files that correspond
+  to hidden generated files.
+
+## 2.5.2
+
+- Simplify warnings for outdated `analyzer`.
+
+## 2.5.1
+
+- Don't log stack traces for subclasses of `Exception`.
+- Bug fix: don't run builders with multiple outputs once per output.
+
+## 2.5.0
+
+User-visible changes:
+
+- Improved performance for large builds. More performance improvements
+  will follow, if your workflow is affected by slow `build_runner` performance
+  then please consider sharing details at
+  https://github.com/dart-lang/build/discussions.
+- Improved logging: show what builders are running and, for long-running
+  builders, where the time is spent.
+
+Versions:
 
 - Bump the min SDK to 3.7.0.
 - Use `build_test` 3.0.0.
 - Use `build_runner_core` 9.0.0.
-- Use new resolver always; remove `--use-experimental-resolver` flag.
+
+Internal changes:
+
 - Start using `package:build/src/internal.dart'.
 - Refactor `MultiPackageAssetReader` to internal `AssetFinder`.
 - `FinalizedReader` no longer implements `AssetReader`.
@@ -935,7 +994,7 @@ also work when you create an output directory.
 
 - Switch to use a `PollingDirectoryWatcher` on windows, which should fix file
   watching with the `--output` option. Follow along at
-  https://github.com/dart-lang/watcher/issues/52 for more details.
+  https://github.com/dart-lang/tools/issues/1713 for more details.
 
 ## 0.7.11
 

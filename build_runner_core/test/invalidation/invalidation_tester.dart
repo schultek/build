@@ -4,8 +4,11 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
+import 'package:analyzer/dart/element/element2.dart';
 import 'package:build/build.dart';
+import 'package:build_runner_core/src/logging/build_log.dart';
 import 'package:build_runner_core/src/util/constants.dart';
 import 'package:build_test/build_test.dart';
 import 'package:built_collection/built_collection.dart';
@@ -19,8 +22,13 @@ import 'package:test/test.dart';
 /// to the path `lib/a.dart`; all names map to the package `pkg`. "Hidden" asset
 /// IDs under `.dart_tool` are mapped back to the same namespace.
 class InvalidationTester {
+  final bool testIsRunning;
+
   /// The source assets on disk before the first build.
   final Set<AssetId> _sourceAssets = {};
+
+  /// Inputs that a builder might read.
+  final List<String> _pickableInputs = [];
 
   /// Import statements.
   ///
@@ -45,7 +53,13 @@ class InvalidationTester {
   final Set<AssetId> _generatedOutputsWritten = {};
 
   /// The [TestReaderWriter] from the most recent build.
-  TestReaderWriter? _readerWriter;
+  TestReaderWriter? readerWriter;
+
+  /// Whether test setup is logged.
+  bool _logSetup = false;
+
+  /// Logged setup for display before a build.
+  final List<String> _setupLog = [];
 
   /// The build number for "printOnFailure" output.
   int _buildNumber = 0;
@@ -53,18 +67,36 @@ class InvalidationTester {
   /// Output number, for writing outputs that are different.
   int _outputNumber = 0;
 
+  InvalidationTester({this.testIsRunning = true});
+
+  /// Starts logging test setup.
+  ///
+  /// Useful if test setup is random or generated.
+  void logSetup() {
+    _logSetup = true;
+  }
+
   /// Sets the assets that will be on disk before the first build.
   ///
   /// See the note on "names" in the class dartdoc.
   void sources(Iterable<String> names) {
+    if (_logSetup) _setupLog.add('tester.sources($names)');
     _sourceAssets.clear();
     for (final name in names) {
       _sourceAssets.add(name.assetId);
     }
   }
 
+  void pickableInputs(Iterable<String> names) {
+    if (_logSetup) _setupLog.add('tester.pickableInputs($names)');
+    _pickableInputs
+      ..clear()
+      ..addAll(names);
+  }
+
   // Sets the import graph for source files and generated files.
   void importGraph(Map<String, List<String>> importGraph) {
+    if (_logSetup) _setupLog.add('tester.importGraph($importGraph)');
     _importGraph.clear();
     _importGraph.addAll(importGraph);
   }
@@ -83,8 +115,16 @@ class InvalidationTester {
     required String from,
     required String to,
     bool isOptional = false,
+    bool outputIsVisible = true,
   }) {
-    final builder = TestBuilder(this, from, [to], isOptional);
+    if (_logSetup) {
+      _setupLog.add(
+        'tester.builder('
+        '$from, $to, isOptional: $isOptional, '
+        'outputIsVisible: $outputIsVisible)',
+      );
+    }
+    final builder = TestBuilder(this, from, [to], isOptional, outputIsVisible);
     _builders.add(builder);
     return TestBuilderBuilder(builder);
   }
@@ -94,12 +134,14 @@ class InvalidationTester {
   /// By default, output will be a digest of all read files. This changes it to
   /// fixed: it won't change when inputs change.
   void fixOutput(String name) {
+    if (_logSetup) _setupLog.add('tester.fixOutput($name)');
     _outputStrategies[name.assetId] = OutputStrategy.fixed;
   }
 
   /// Sets the output strategy for [name] back to the default,
   /// [OutputStrategy.inputDigest].
   void digestOutput(String name) {
+    if (_logSetup) _setupLog.add('tester.digestOutput($name)');
     _outputStrategies[name.assetId] = OutputStrategy.inputDigest;
   }
 
@@ -107,6 +149,7 @@ class InvalidationTester {
   ///
   /// The generator will not output the file.
   void skipOutput(String name) {
+    if (_logSetup) _setupLog.add('tester.skipOutput($name)');
     _outputStrategies[name.assetId] = OutputStrategy.none;
   }
 
@@ -114,11 +157,13 @@ class InvalidationTester {
   ///
   /// The generator will write any outputs it is configured to write, then fail.
   void fail(String name) {
+    if (_logSetup) _setupLog.add('tester.fail($name)');
     _failureStrategies[name.assetId] = FailureStrategy.fail;
   }
 
   /// Sets the failure strategy for [name] to [FailureStrategy.succeed].
   void succeed(String name) {
+    if (_logSetup) _setupLog.add('tester.succeed($name)');
     _failureStrategies[name.assetId] = FailureStrategy.succeed;
   }
 
@@ -136,8 +181,9 @@ class InvalidationTester {
   /// For subsequent builds, pass asset name [change] to change that asset;
   /// [delete] to delete one; and/or [create] to create one.
   Future<Result> build({String? change, String? delete, String? create}) async {
+    if (_logSetup) _setupLog.add('tester.build($change, $delete, $create)');
     final assets = <AssetId, String>{};
-    if (_readerWriter == null) {
+    if (readerWriter == null) {
       // Initial build.
       if (change != null || delete != null || create != null) {
         throw StateError('Do a build without change, delete or create first.');
@@ -147,8 +193,8 @@ class InvalidationTester {
       }
     } else {
       // Create the new filesystem from the previous build state.
-      for (final id in _readerWriter!.testing.assets) {
-        assets[id] = _readerWriter!.testing.readString(id);
+      for (final id in readerWriter!.testing.assets) {
+        assets[id] = readerWriter!.testing.readString(id);
       }
     }
 
@@ -185,29 +231,34 @@ class InvalidationTester {
       assets.map((id, content) => MapEntry(id.toString(), content)),
       rootPackage: 'pkg',
       optionalBuilders: _builders.where((b) => b.isOptional).toSet(),
+      visibleOutputBuilders: _builders.where((b) => b.outputIsVisible).toSet(),
       testingBuilderConfig: false,
     );
     final logString = log.toString();
-    printOnFailure(
-      '=== build log #${++_buildNumber} ===\n\n'
-      '${logString.trimAndIndent}',
-    );
-    _readerWriter = testBuildResult.readerWriter;
+    if (testIsRunning) {
+      printOnFailure(
+        '=== build log #${++_buildNumber} ===\n\n'
+        '${_setupLog.map((l) => '  $l\n').join('')}'
+        '${logString.trimAndIndent}',
+      );
+    }
+    if (_logSetup) _setupLog.clear();
+    readerWriter = testBuildResult.readerWriter;
 
     final written = _generatedOutputsWritten.map(_assetIdToName);
     final deletedAssets = startingAssets.difference(
-      _readerWriter!.testing.assets.toSet(),
+      readerWriter!.testing.assets.toSet(),
     );
     final deleted = deletedAssets.map(_assetIdToName);
 
-    return logString.contains('Succeeded after')
+    return logString.contains(BuildLog.successPattern)
         ? Result(written: written, deleted: deleted)
         : Result.failure(written: written, deleted: deleted);
   }
 
   /// The size of the asset graph that was written by [build], in bytes.
   int get assetGraphSize =>
-      _readerWriter!.testing.readBytes(AssetId('pkg', assetGraphPath)).length;
+      readerWriter!.testing.readBytes(AssetId('pkg', assetGraphPath)).length;
 }
 
 /// Strategy used by generators for outputting files.
@@ -218,7 +269,11 @@ enum OutputStrategy {
   /// Output with fixed content.
   fixed,
 
-  /// Output with digest of all files that were read.
+  /// Output with a list of inputs: each line `$name,$hash` for inputs
+  /// that could be read, or `$name` if not.
+  ///
+  /// If a builder resolves files, this includes all transitively resolved
+  /// files and their hashes.
   inputDigest,
 }
 
@@ -273,23 +328,37 @@ class Result {
 /// Sets test setup on a [TestBuilder].
 class TestBuilderBuilder {
   final TestBuilder _builder;
+  final bool _logSetup;
+  final List<String> _setupLog;
 
-  TestBuilderBuilder(this._builder);
+  TestBuilderBuilder(this._builder)
+    : _logSetup = _builder._tester._logSetup,
+      _setupLog = _builder._tester._setupLog;
 
   /// Test setup: the builder will read the asset that is [extension] applied to
   /// the primary input.
   void reads(String extension) {
+    if (_logSetup) _setupLog.add('builder.reads($extension)');
     _builder.reads.add('$extension.dart');
   }
 
   /// Test setup: the builder will read the asset with [name].
-  void readsOther(String name) {
-    _builder.otherReads.add(name);
+  void readsOther(String name, {String? forInput}) {
+    if (_logSetup) _setupLog.add('builder.readsOther($name)');
+    (_builder.otherReads[forInput] ??= []).add(name);
   }
 
   /// Test setup: the builder will parse the Dart source asset with [name].
-  void resolvesOther(String name) {
-    _builder.otherResolves.add(name);
+  void resolvesOther(String name, {String? forInput}) {
+    if (_logSetup) _setupLog.add('builder.resolvesOther($name)');
+    (_builder.otherResolves[forInput] ??= []).add(name);
+  }
+
+  void readsForSeedThenReadsRandomly(String extension) {
+    if (_logSetup) {
+      _setupLog.add('builder.readsForSeedThenReadsRandomly($extension)');
+    }
+    _builder.readsForSeedThenReadsRandomly.add('$extension.dart');
   }
 
   /// Test setup: the builder will write the asset that is [extension] applied
@@ -298,6 +367,7 @@ class TestBuilderBuilder {
   /// The output will be new for this generation, unless the asset was
   /// fixed with `fixOutputs`.
   void writes(String extension) {
+    if (_logSetup) _setupLog.add('builder.writes($extension)');
     _builder.writes.add('$extension.dart');
   }
 }
@@ -309,60 +379,147 @@ class TestBuilder implements Builder {
 
   final bool isOptional;
 
+  final bool outputIsVisible;
+
   final InvalidationTester _tester;
+
+  final String from;
 
   /// Extensions of assets that the builder will read.
   ///
   /// The extensions are applied to the primary input asset ID with
-  /// [AssetIdExtension.replaceAllPathExtensions].
+  /// [AssetIdExtension.replaceExtensions].
   List<String> reads = [];
 
-  /// Names of assets that the builder will read.
-  List<String> otherReads = [];
+  /// Names of assets that the builder will read, by input name.
+  ///
+  /// The `null` key is for "all inputs".
+  Map<String?, List<String>> otherReads = {};
 
-  /// Names of assets that the builder will resolve.
-  List<String> otherResolves = [];
+  /// Names of assets that the builder will resolve, by input name.
+  ///
+  /// The `null` key is for "all inputs".
+  Map<String?, List<String>> otherResolves = {};
+
+  List<String> readsForSeedThenReadsRandomly = [];
 
   /// Extensions of assets that the builder will write.
   ///
   /// The extensions are applied to the primary input asset ID with
-  /// [AssetIdExtension.replaceAllPathExtensions].
+  /// [AssetIdExtension.replaceExtensions].
   List<String> writes = [];
 
-  TestBuilder(this._tester, String from, Iterable<String> to, this.isOptional)
-    : buildExtensions = {'$from.dart': to.map((to) => '$to.dart').toList()};
+  TestBuilder(
+    this._tester,
+    this.from,
+    Iterable<String> to,
+    this.isOptional,
+    this.outputIsVisible,
+  ) : buildExtensions = {'$from.dart': to.map((to) => '$to.dart').toList()};
 
   @override
   Future<void> build(BuildStep buildStep) async {
-    final content = <String>[];
+    final recordedInput = <String>[];
+
+    void recordInput(AssetId id, String? content) {
+      final hash =
+          content == null
+              ? null
+              : base64.encode(md5.convert(utf8.encode(content)).bytes);
+      recordedInput.add('$id${hash == null ? '' : ',$hash'}');
+    }
+
     for (final read in reads) {
-      final readId = buildStep.inputId.replaceAllPathExtensions(read);
-      content.add(read.toString());
+      final readId = buildStep.inputId.replaceExtensions('$from.dart', read);
       if (await buildStep.canRead(readId)) {
-        content.add(await buildStep.readAsString(readId));
+        recordInput(readId, await buildStep.readAsString(readId));
+      } else {
+        recordInput(readId, null);
       }
     }
-    for (final read in otherReads) {
-      content.add(read.assetId.toString());
+
+    final pickedOtherReads = <String>[];
+    final pickedOtherResolves = <String>[];
+    for (final read in readsForSeedThenReadsRandomly) {
+      final readId = buildStep.inputId.replaceExtensions('$from.dart', read);
+      if (await buildStep.canRead(readId)) {
+        final content = await buildStep.readAsString(readId);
+        recordInput(readId, content);
+        final random = Random(content.hashCode);
+
+        final pick =
+            _tester._pickableInputs[random.nextInt(
+              _tester._pickableInputs.length,
+            )];
+        if (_tester._logSetup) {
+          _tester._setupLog.add(
+            'builder $buildExtensions on '
+            '${_assetIdToName(buildStep.inputId)} picked read: $pick',
+          );
+        }
+        pickedOtherReads.add(pick);
+
+        final resolvePick =
+            _tester._pickableInputs[random.nextInt(
+              _tester._pickableInputs.length,
+            )];
+        if (_tester._logSetup) {
+          _tester._setupLog.add(
+            'builder $buildExtensions on '
+            '${_assetIdToName(buildStep.inputId)} picked resolve: $resolvePick',
+          );
+        }
+        pickedOtherResolves.add(resolvePick);
+      } else {
+        recordInput(readId, null);
+      }
+    }
+
+    final otherReadsForThisInput = (otherReads[null] ?? []).followedBy(
+      otherReads[_assetIdToName(buildStep.inputId)] ?? [],
+    );
+    for (final read in [...otherReadsForThisInput, ...pickedOtherReads]) {
       if (await buildStep.canRead(read.assetId)) {
-        content.add(await buildStep.readAsString(read.assetId));
+        recordInput(read.assetId, await buildStep.readAsString(read.assetId));
+      } else {
+        recordInput(read.assetId, null);
       }
     }
-    for (final resolve in otherResolves) {
-      content.add(resolve.assetId.toString());
-      await buildStep.resolver.libraryFor(resolve.assetId);
+
+    final otherResolvesForThisInput = (otherResolves[null] ?? []).followedBy(
+      otherResolves[_assetIdToName(buildStep.inputId)] ?? [],
+    );
+    for (final resolve in [
+      ...otherResolvesForThisInput,
+      ...pickedOtherResolves,
+    ]) {
+      if (await buildStep.canRead(resolve.assetId)) {
+        recordInput(
+          resolve.assetId,
+          await buildStep.readAsString(resolve.assetId),
+        );
+        final library = await buildStep.resolver.libraryFor(resolve.assetId);
+        for (final import in library.transitiveImports) {
+          recordInput(
+            AssetId.resolve(import.uri),
+            import.firstFragment.source.exists()
+                ? import.firstFragment.source.contents.data
+                : null,
+          );
+        }
+      } else {
+        recordInput(resolve.assetId, null);
+      }
     }
     for (final write in writes) {
-      final writeId = buildStep.inputId.replaceAllPathExtensions(write);
+      final writeId = buildStep.inputId.replaceExtensions('$from.dart', write);
       final outputStrategy =
           _tester._outputStrategies[writeId] ?? OutputStrategy.inputDigest;
-      final inputHash = base64.encode(
-        md5.convert(utf8.encode(content.join('\n\n'))).bytes,
-      );
       final output = switch (outputStrategy) {
         OutputStrategy.fixed => _tester._imports(writeId),
         OutputStrategy.inputDigest =>
-          '${_tester._imports(writeId)}\n// $inputHash',
+          '${_tester._imports(writeId)}\n'
+              '${recordedInput.map((l) => '// $l\n').join('')}',
         OutputStrategy.none => null,
       };
       if (output != null) {
@@ -371,7 +528,7 @@ class TestBuilder implements Builder {
       }
     }
     for (final write in writes) {
-      final writeId = buildStep.inputId.replaceAllPathExtensions(write);
+      final writeId = buildStep.inputId.replaceExtensions('$from.dart', write);
       if (_tester._failureStrategies[writeId] == FailureStrategy.fail) {
         throw StateError('Failing as requested by test setup.');
       }
@@ -417,8 +574,28 @@ String _assetIdToName(AssetId id) {
 }
 
 extension AssetIdExtension on AssetId {
-  static final extensionsRegexp = RegExp(r'\..*');
+  AssetId replaceExtensions(String from, String to) =>
+      AssetId(package, path.replaceAll(RegExp('$from\$'), to));
+}
 
-  AssetId replaceAllPathExtensions(String extension) =>
-      AssetId(package, path.replaceAll(extensionsRegexp, '') + extension);
+// ignore_for_file: deprecated_member_use
+extension TransitiveLibrariesExtension on LibraryElement2 {
+  /// Finds all transitive imports from this library, excluding SDK libraries.
+  Set<LibraryElement2> get transitiveImports {
+    final result = Set<LibraryElement2>.identity();
+    final work = [this];
+
+    while (work.isNotEmpty) {
+      final current = work.removeLast();
+      // For each library found, add its direct dependencies.
+      for (final library in current.firstFragment.importedLibraries2) {
+        if (library.isInSdk) continue;
+        if (result.add(library)) {
+          work.add(library);
+        }
+      }
+    }
+
+    return result;
+  }
 }

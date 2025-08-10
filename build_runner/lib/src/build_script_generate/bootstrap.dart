@@ -13,9 +13,8 @@ import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 import 'package:stack_trace/stack_trace.dart';
 
+import 'build_process_state.dart';
 import 'build_script_generate.dart';
-
-final _logger = Logger('Bootstrap');
 
 /// Generates the build script, precompiles it if needed, and runs it.
 ///
@@ -34,14 +33,29 @@ Future<int> generateAndRun(
   Future<String> Function() generateBuildScript = generateBuildScript,
   void Function(Object error, StackTrace stackTrace) handleUncaughtError =
       _defaultHandleUncaughtError,
-}) async {
+}) {
+  return buildLog.runWithLoggerDisplay(
+    logger,
+    () => _generateAndRun(
+      args,
+      experiments,
+      generateBuildScript,
+      handleUncaughtError,
+    ),
+  );
+}
+
+Future<int> _generateAndRun(
+  List<String> args,
+  List<String>? experiments,
+  Future<String> Function() generateBuildScript,
+  void Function(Object error, StackTrace stackTrace) handleUncaughtError,
+) async {
   experiments ??= [];
-  logger ??= _logger;
   ReceivePort? exitPort;
   ReceivePort? errorPort;
-  ReceivePort? messagePort;
+  RawReceivePort? messagePort;
   StreamSubscription? errorListener;
-  int? scriptExitCode;
 
   var tryCount = 0;
   var succeeded = false;
@@ -64,24 +78,34 @@ Future<int> generateAndRun(
         buildScript
           ..createSync(recursive: true)
           ..writeAsStringSync(newContents);
+        // Delete the kernel file so it will be rebuilt.
+        final kernelFile = File(scriptKernelLocation);
+        if (kernelFile.existsSync()) {
+          kernelFile.deleteSync();
+        }
+        buildLog.fullBuildBecause(FullBuildReason.incompatibleScript);
       }
     } on CannotBuildException {
       return ExitCode.config.code;
     }
 
-    scriptExitCode = await _createKernelIfNeeded(logger, experiments);
-    if (scriptExitCode != 0) return scriptExitCode!;
+    if (!await _createKernelIfNeeded(experiments)) {
+      return buildProcessState.isolateExitCode = ExitCode.config.code;
+    }
 
     exitPort = ReceivePort();
     errorPort = ReceivePort();
-    messagePort = ReceivePort();
+    messagePort = RawReceivePort();
     errorListener = errorPort.listen((e) {
       e = e as List<Object?>;
       final error = e[0] ?? TypeError();
       final trace = Trace.parse(e[1] as String? ?? '').terse;
 
       handleUncaughtError(error, trace);
-      if (scriptExitCode == 0) scriptExitCode = 1;
+      if (buildProcessState.isolateExitCode == null ||
+          buildProcessState.isolateExitCode == 0) {
+        buildProcessState.isolateExitCode = 1;
+      }
     });
     try {
       await Isolate.spawnUri(
@@ -95,42 +119,42 @@ Future<int> generateAndRun(
       succeeded = true;
     } on IsolateSpawnException catch (e) {
       if (tryCount > 1) {
-        logger.severe(
-          'Failed to spawn build script after retry. '
-          'This is likely due to a misconfigured builder definition. '
-          'See the generated script at $scriptLocation to find errors.',
-          e,
+        buildLog.error(
+          buildLog.renderThrowable(
+            'Failed to spawn build script. '
+            'Check builder definitions and generated script $scriptLocation.',
+            e,
+          ),
         );
         messagePort.sendPort.send(ExitCode.config.code);
         exitPort.sendPort.send(null);
       } else {
-        logger.warning(
-          'Error spawning build script isolate, this is likely due to a Dart '
-          'SDK update. Deleting precompiled script and retrying...',
-        );
+        buildLog.fullBuildBecause(FullBuildReason.incompatibleScript);
       }
-      await File(scriptKernelLocation).rename(scriptKernelCachedLocation);
+      File(scriptKernelLocation).renameSync(scriptKernelCachedLocation);
     }
   }
 
-  StreamSubscription? exitCodeListener;
-  exitCodeListener = messagePort!.listen((isolateExitCode) {
-    if (isolateExitCode is int) {
-      scriptExitCode = isolateExitCode;
-    } else {
-      throw StateError(
-        'Bad response from isolate, expected an exit code but got '
-        '$isolateExitCode',
-      );
-    }
-    exitCodeListener!.cancel();
-    exitCodeListener = null;
-  });
+  final sendPortCompleter = Completer<SendPort>();
+  messagePort!.handler = (Object? message) {
+    sendPortCompleter.complete(message as SendPort);
+  };
+  final sendPort = await sendPortCompleter.future;
+
+  await buildProcessState.send(sendPort);
+  buildProcessState.isolateExitCode = null;
+  final buildProcessStateListener = buildProcessState.listen(
+    ReceivePort.fromRawReceivePort(messagePort),
+  );
+
   await exitPort?.first;
   await errorListener?.cancel();
-  await exitCodeListener?.cancel();
+  await buildProcessStateListener.cancel();
 
-  return scriptExitCode ?? 1;
+  // Can be null if the isolate did not set any exit code.
+  buildProcessState.isolateExitCode ??= 1;
+
+  return buildProcessState.isolateExitCode!;
 }
 
 /// Creates a precompiled Kernel snapshot for the build script if necessary.
@@ -141,33 +165,25 @@ Future<int> generateAndRun(
 /// - Either build_runner or build_daemon point at a different location than
 ///   they used to, see https://github.com/dart-lang/build/issues/1929.
 ///
-/// Returns zero for success or a number for failure which should be set to the
-/// exit code.
-Future<int> _createKernelIfNeeded(
-  Logger logger,
-  List<String> experiments,
-) async {
+/// Returns `true` on success or `false` on failure.
+Future<bool> _createKernelIfNeeded(List<String> experiments) async {
   var assetGraphFile = File(assetGraphPathFor(scriptKernelLocation));
   var kernelFile = File(scriptKernelLocation);
   var kernelCacheFile = File(scriptKernelCachedLocation);
 
-  if (await kernelFile.exists()) {
-    // If we failed to serialize an asset graph for the snapshot, then we don't
-    // want to re-use it because we can't check if it is up to date.
-    if (!await assetGraphFile.exists()) {
-      await kernelFile.rename(scriptKernelCachedLocation);
-      logger.warning(
-        'Invalidated precompiled build script due to missing asset graph.',
-      );
+  if (kernelFile.existsSync()) {
+    if (!assetGraphFile.existsSync()) {
+      // If we failed to serialize an asset graph for the snapshot, then we
+      // don't want to re-use it because we can't check if it is up to date.
+      kernelFile.renameSync(scriptKernelCachedLocation);
+      buildLog.fullBuildBecause(FullBuildReason.incompatibleAssetGraph);
     } else if (!await _checkImportantPackageDepsAndExperiments(experiments)) {
-      await kernelFile.rename(scriptKernelCachedLocation);
-      logger.warning(
-        'Invalidated precompiled build script due to core package update',
-      );
+      kernelFile.renameSync(scriptKernelCachedLocation);
+      buildLog.fullBuildBecause(FullBuildReason.incompatibleScript);
     }
   }
 
-  if (!await kernelFile.exists()) {
+  if (!kernelFile.existsSync()) {
     final client = await FrontendServerClient.start(
       scriptLocation,
       scriptKernelCachedLocation,
@@ -177,29 +193,21 @@ Future<int> _createKernelIfNeeded(
       packagesJson: (await Isolate.packageConfig)!.toFilePath(),
     );
 
-    var hadOutput = false;
     var hadErrors = false;
-    await logTimedAsync(logger, 'Precompiling build script...', () async {
-      try {
-        final result = await client.compile();
-        hadErrors = result.errorCount > 0 || !(await kernelCacheFile.exists());
+    buildLog.doing('Compiling the build script.');
+    try {
+      final result = await client.compile();
+      hadErrors = result.errorCount > 0 || !kernelCacheFile.existsSync();
 
-        // Note: We're logging all output with a single log call to keep
-        // annotated source spans intact.
-        final logOutput = result.compilerOutputLines.join('\n');
-        if (logOutput.isNotEmpty) {
-          hadOutput = true;
-          if (hadErrors) {
-            // Always show compiler output if there were errors
-            logger.warning(logOutput);
-          } else {
-            logger.fine(logOutput);
-          }
-        }
-      } finally {
-        client.kill();
+      // Note: We're logging all output with a single log call to keep
+      // annotated source spans intact.
+      final logOutput = result.compilerOutputLines.join('\n');
+      if (logOutput.isNotEmpty && hadErrors) {
+        buildLog.warning(logOutput);
       }
-    });
+    } finally {
+      client.kill();
+    }
 
     // For some compilation errors, the frontend inserts an "invalid
     // expression" which throws at runtime. When running those kernel files
@@ -208,27 +216,20 @@ Future<int> _createKernelIfNeeded(
     // In this case we leave the cached kernel file in tact so future compiles
     // are faster, but don't copy it over to the real location.
     if (!hadErrors) {
-      await kernelCacheFile.rename(scriptKernelLocation);
-      if (hadOutput) {
-        logger.info(
-          'There was output on stdout while precompiling the build script; run '
-          'with `--verbose` to see it (you will need to run a `clean` first to '
-          're-generate it).\n',
-        );
-      }
+      kernelCacheFile.renameSync(scriptKernelLocation);
     }
 
-    if (!await kernelFile.exists()) {
-      logger.severe('''
-Failed to precompile build script $scriptLocation.
-This is likely caused by a misconfigured builder definition.
-''');
-      return ExitCode.config.code;
+    if (!kernelFile.existsSync()) {
+      buildLog.error(
+        'Failed to compile build script. '
+        'Check builder definitions and generated script $scriptLocation.',
+      );
+      return false;
     }
     // Create _previousLocationsFile.
     await _checkImportantPackageDepsAndExperiments(experiments);
   }
-  return 0;
+  return true;
 }
 
 const _importantPackages = ['build_daemon', 'build_runner'];
@@ -260,13 +261,11 @@ Future<bool> _checkImportantPackageDepsAndExperiments(
       .join('\n');
 
   if (!_previousLocationsFile.existsSync()) {
-    _logger.fine('Core package locations file does not exist');
     _previousLocationsFile.writeAsStringSync(fileContents);
     return false;
   }
 
   if (fileContents != _previousLocationsFile.readAsStringSync()) {
-    _logger.fine('Core packages locations have changed');
     _previousLocationsFile.writeAsStringSync(fileContents);
     return false;
   }

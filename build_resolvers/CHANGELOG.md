@@ -1,17 +1,70 @@
-## 2.4.5-wip
+## 3.0.1
+
+- Use `build` 3.0.1.
+- Allow `analyzer` 8.0.0.
+
+## 3.0.0
+
+- Remove unused deps: `graphs`, `logging`, `stream_transform`.
+- Breaking: use the new `element2` APIs in `analyzer`. Builders that do
+  resolution need to switch to the new API, see
+  https://github.com/dart-lang/sdk/blob/main/pkg/analyzer/doc/element_model_migration_guide.md.
+  For questions please use https://github.com/dart-lang/build/discussions.
+
+## 3.0.0-dev.2
+
+- Remove unused deps: `graphs`, `logging`, `stream_transform`.
+
+## 3.0.0-dev.1
+
+- Breaking: use the new `element2` APIs in `analyzer`. Builders that do
+  resolution need to switch to the new API, see
+  https://github.com/dart-lang/sdk/blob/main/pkg/analyzer/doc/element_model_migration_guide.md.
+  For questions please use https://github.com/dart-lang/build/discussions.
+
+## 2.5.4
+
+- Use `build_runner_core` 9.1.2.
+
+## 2.5.3
+
+- Use `build_runner_core` 9.1.1.
+
+## 2.5.2
+
+- Simplify warnings for outdated `analyzer`.
+
+## 2.5.1
+
+- Use `build_runner_core` 9.0.1.
+
+## 2.5.0
+
+User-visible changes:
+
+- Improved performance for large builds. More performance improvements
+  will follow, if your workflow is affected by slow `build_runner` performance
+  then please consider sharing details at
+  https://github.com/dart-lang/build/discussions.
+- Improved logging: show what builders are running and, for long-running
+  builders, where the time is spent.
+- Bug fix: fix delay on shutdown for fast builds when the "analyzer out of
+  date" warning is displayed.
+
+Versions:
 
 - Bump the min SDK to 3.7.0.
 - Use `build_test` 3.0.0.
 - Use `build_runner_core` 9.0.0.
-- Use new resolver always; remove `--use-experimental-resolver` flag.
 - Start using `package:build/src/internal.dart`.
+
+Internal changes:
+
 - Switch `BuildAssetUriResolver` dependency crawl to an iterative
   algorithm, preventing stack overflows.
 - Move `BuildStepImpl` to `build_runner_core`, use `SingleStepReader` directly.
 - Stop building `transitive_digest` files by default.
 - Use `LibraryCycleGraphLoader` to load transitive deps for analysis.
-- Bug fix: fix delay on shutdown for fast builds when the "analyzer out of
-  date" warning is displayed.
 - Track resolver dependencies as library cycle graphs.
 - Ignore deprecated analyzer API usages.
 

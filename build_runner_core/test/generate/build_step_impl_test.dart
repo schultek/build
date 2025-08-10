@@ -12,6 +12,7 @@ import 'dart:convert';
 import 'package:build/build.dart';
 import 'package:build/src/builder/build_step.dart';
 import 'package:build_resolvers/build_resolvers.dart';
+import 'package:build_runner_core/build_runner_core.dart';
 import 'package:build_runner_core/src/generate/build_step_impl.dart';
 import 'package:build_runner_core/src/generate/single_step_reader_writer.dart';
 import 'package:build_test/build_test.dart';
@@ -22,6 +23,7 @@ void main() {
   late ResourceManager resourceManager;
 
   setUp(() {
+    BuildLog.resetForTests(printOnFailure: printOnFailure);
     resourceManager = ResourceManager();
   });
 
@@ -145,18 +147,18 @@ void main() {
         var resolver = buildStep.resolver;
 
         var aLib = await resolver.libraryFor(primary);
-        expect(aLib.name, 'a');
-        expect(aLib.definingCompilationUnit.libraryImports.length, 2);
+        expect(aLib.name3, 'a');
+        expect(aLib.firstFragment.libraryImports2.length, 2);
         expect(
-          aLib.definingCompilationUnit.libraryImports.any(
-            (import) => import.importedLibrary!.name == 'b',
+          aLib.firstFragment.libraryImports2.any(
+            (import) => import.importedLibrary2!.name3 == 'b',
           ),
           isTrue,
         );
 
         var bLib = await resolver.findLibraryByName('b');
-        expect(bLib!.name, 'b');
-        expect(bLib.definingCompilationUnit.libraryImports.length, 1);
+        expect(bLib!.name3, 'b');
+        expect(bLib.firstFragment.libraryImports2.length, 1);
 
         await buildStep.complete();
       });

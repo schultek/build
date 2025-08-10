@@ -1,12 +1,13 @@
 // Copyright (c) 2016, the Dart project authors.  Please see the AUTHORS file
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
-// ignore_for_file: deprecated_member_use
+
+// ignore_for_file: deprecated_member_use until analyzer 7 support is dropped.
 
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/analysis/session.dart';
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/element2.dart';
 import 'package:analyzer/error/error.dart';
 
 import '../asset/id.dart';
@@ -29,9 +30,9 @@ abstract class Resolver {
   ///  - Every public `dart:` library part of the SDK.
   ///  - All libraries recursively accessible from the mentioned sources, for
   ///    instance because due to imports or exports.
-  Stream<LibraryElement> get libraries;
+  Stream<LibraryElement2> get libraries;
 
-  /// Returns the parsed [AstNode] for [Element].
+  /// Returns the parsed [AstNode] for [fragment].
   ///
   /// This should always be preferred over using the [AnalysisSession]
   /// directly, because it avoids [InconsistentAnalysisException] issues.
@@ -42,7 +43,7 @@ abstract class Resolver {
   /// Returns `null` if the ast node can not be found. This can happen if an
   /// element is coming from a summary, or is unavailable for some other
   /// reason.
-  Future<AstNode?> astNodeFor(Element element, {bool resolve = false});
+  Future<AstNode?> astNodeFor(Fragment fragment, {bool resolve = false});
 
   /// Returns a parsed AST structor representing the file defined in [assetId].
   ///
@@ -61,7 +62,7 @@ abstract class Resolver {
   /// * Throws [NonLibraryAssetException] if [assetId] is not a Dart library.
   /// * If the [assetId] has syntax errors, and [allowSyntaxErrors] is set to
   ///   `false` (the default), throws a [SyntaxErrorInAssetException].
-  Future<LibraryElement> libraryFor(
+  Future<LibraryElement2> libraryFor(
     AssetId assetId, {
     bool allowSyntaxErrors = false,
   });
@@ -76,7 +77,7 @@ abstract class Resolver {
   /// **NOTE**: In general, its recommended to use [libraryFor] with an absolute
   /// asset id instead of a named identifier that has the possibility of not
   /// being unique.
-  Future<LibraryElement?> findLibraryByName(String libraryName);
+  Future<LibraryElement2?> findLibraryByName(String libraryName);
 
   /// Returns the [AssetId] of the Dart library or part declaring [element].
   ///
@@ -86,7 +87,7 @@ abstract class Resolver {
   ///
   /// The returned asset is not necessarily the asset that should be imported to
   /// use the element, it may be a part file instead of the library.
-  Future<AssetId> assetIdForElement(Element element);
+  Future<AssetId> assetIdForElement(Element2 element);
 }
 
 /// A resolver that should be manually released at the end of a build step.
@@ -169,39 +170,34 @@ class SyntaxErrorInAssetException implements Exception {
 
   @override
   String toString() {
-    final buffer =
-        StringBuffer()
-          ..writeln('This builder requires Dart inputs without syntax errors.')
-          ..writeln(
-            'However, ${assetId.uri} (or an existing part) contains the '
-            'following errors.',
-          );
+    final buffer = StringBuffer();
 
     // Avoid generating too much output for syntax errors. The user likely has
     // an editor that shows them anyway.
     final entries = errorToResult.entries.toList();
+    var first = true;
     for (final errorAndResult in entries.take(_maxErrorsInToString)) {
+      if (!first) {
+        buffer.write('\n');
+      }
+      first = false;
       final error = errorAndResult.key;
-      // Use a short name: We present the full context by including the asset id
-      // and this is easier to skim through
-      final sourceName = error.source.shortName;
 
       final lineInfo = errorAndResult.value.lineInfo;
       final position = lineInfo.getLocation(error.offset);
 
-      // Output messages like "foo.dart:3:4: Expected a semicolon here."
-      buffer.writeln(
-        '$sourceName:${position.lineNumber}:${position.columnNumber}: '
+      // The file name will be added by `BuildLog`, so write just the line
+      // number and column, for example: "3:4: Expected a semicolon here."
+      buffer.write(
+        '${position.lineNumber}:${position.columnNumber}: '
         '${error.message}',
       );
     }
 
     final additionalErrors = entries.length - _maxErrorsInToString;
     if (additionalErrors > 0) {
-      buffer.writeln('And $additionalErrors more...');
+      buffer.write('\nAnd $additionalErrors more.');
     }
-
-    buffer.writeln('\nTry fixing the errors and re-running the build.');
 
     return buffer.toString();
   }

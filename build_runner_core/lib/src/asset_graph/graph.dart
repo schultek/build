@@ -124,7 +124,7 @@ class AssetGraph implements GeneratedAssetHider {
     );
     // Pre-emptively compute digests for the nodes we know have outputs.
     await graph._setDigests(
-      sources.where((id) => graph.get(id)!.primaryOutputs.isNotEmpty),
+      sources.where((id) => graph.get(id)?.primaryOutputs.isNotEmpty == true),
       digestReader,
     );
     // Always compute digests for all internal nodes.
@@ -261,6 +261,8 @@ class AssetGraph implements GeneratedAssetHider {
   }
 
   /// Changes [id] and its transitive`primaryOutput`s to `missingSource` nodes.
+  ///
+  /// Removes post build applications with removed assets as inputs.
   void _setMissingRecursive(AssetId id, {Set<AssetId>? removedIds}) {
     removedIds ??= <AssetId>{};
     var node = get(id);
@@ -276,6 +278,19 @@ class AssetGraph implements GeneratedAssetHider {
     // Remove post build action applications with removed assets as inputs.
     for (final packageOutputs in _postProcessBuildStepOutputs.values) {
       packageOutputs.removeWhere((id, _) => removedIds!.contains(id.input));
+    }
+  }
+
+  /// Removes [id] and its transitive`primaryOutput`s from the graph.
+  void _removeRecursive(AssetId id, {Set<AssetId>? removedIds}) {
+    removedIds ??= <AssetId>{};
+    var node = get(id);
+    if (node == null) return;
+    if (removedIds.add(id)) {
+      for (var output in node.primaryOutputs.toList()) {
+        _removeRecursive(output, removedIds: removedIds);
+      }
+      _nodesByPackage[id.package]!.remove(id.path);
     }
   }
 
@@ -466,6 +481,8 @@ class AssetGraph implements GeneratedAssetHider {
   ///
   /// If [placeholders] is supplied they will be added to [newSources] to create
   /// the full input set.
+  ///
+  /// May remove nodes if sources overlap with generated outputs.
   void _addOutputsForSources(
     BuildPhases buildPhases,
     Set<AssetId> newSources,
@@ -557,8 +574,9 @@ class AssetGraph implements GeneratedAssetHider {
   /// If there are existing [AssetNode.source]s or [AssetNode.missingSource]s
   /// that overlap the [AssetNode.generated]s, then they will be replaced with
   /// [AssetNode.generated]s, and their transitive `primaryOutputs` will be
-  /// changed to `missingSource` nodes. The return value is the set of assets
-  /// that were removed from the graph.
+  /// removed from the graph.
+  ///
+  /// The return value is the set of assets that were removed from the graph.
   Set<AssetId> _addGeneratedOutputs(
     Iterable<AssetId> outputs,
     int phaseNumber,
@@ -588,7 +606,7 @@ class AssetGraph implements GeneratedAssetHider {
             buildPhases.inBuildPhases[phaseNumber].builderLabel,
           );
         }
-        _setMissingRecursive(output, removedIds: removed);
+        _removeRecursive(output, removedIds: removed);
       }
 
       var newNode = AssetNode.generated(

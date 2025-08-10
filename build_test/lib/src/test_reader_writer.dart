@@ -16,6 +16,9 @@ import 'in_memory_reader_writer.dart';
 /// files.
 ///
 /// Writes and deletes are notified to [FakeWatcher].
+///
+/// You must pass a `rootPackage` if the `TestReaderWriter` will be used in
+/// a build. This specifies which package `build_runner` is running in.
 abstract interface class TestReaderWriter
     implements AssetReader, RunnerAssetWriter {
   factory TestReaderWriter({String? rootPackage}) =>
@@ -26,11 +29,24 @@ abstract interface class TestReaderWriter
 
 /// Access to [TestReaderWriter] state for testing.
 abstract interface class ReaderWriterTesting {
+  /// Loads all `lib` files visible to the current isolate into memory.
+  Future<void> loadIsolateSources();
+
   /// All the assets that exist on the [TestReaderWriter] in-memory filesystem.
   Iterable<AssetId> get assets;
 
   /// The assets that have been recorded as inputs of the build.
   Iterable<AssetId> get inputsTracked;
+
+  /// The assets that have been recorded as inputs of the build, filtered to
+  /// build steps for [primaryInput] and/or with [builderLabel].
+  ///
+  /// Builder labels are the builder names that appear in log output, for
+  /// example `source_gen:combining_builder`.
+  Iterable<AssetId> inputsTrackedFor({
+    AssetId? primaryInput,
+    String? builderLabel,
+  });
 
   /// The assets that the build resolved using the analyzer.
   ///
@@ -38,6 +54,13 @@ abstract interface class ReaderWriterTesting {
   /// via its directives will be treated as dependencies of the build for
   /// invalidation purposes.
   Iterable<AssetId> get resolverEntrypointsTracked;
+
+  /// The assets that have been resolved using the analyzer, filtered to
+  /// build steps for [primaryInput] and/or with [builderLabel].
+  Iterable<AssetId> resolverEntrypointsTrackedFor({
+    AssetId? primaryInput,
+    String? builderLabel,
+  });
 
   /// The assets that have been read via the [TestReaderWriter]'s non-test
   /// APIs.

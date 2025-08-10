@@ -3,6 +3,7 @@
 // BSD-style license that can be found in the LICENSE file.
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:build/build.dart';
 import 'package:build/experiments.dart';
@@ -11,6 +12,9 @@ import 'package:build_resolvers/build_resolvers.dart';
 import 'package:build_runner_core/build_runner_core.dart';
 // ignore: implementation_imports
 import 'package:build_runner_core/src/generate/build_series.dart';
+// ignore: implementation_imports
+import 'package:build_runner_core/src/generate/options.dart';
+import 'package:glob/glob.dart';
 import 'package:logging/logging.dart';
 import 'package:package_config/package_config.dart';
 import 'package:test/test.dart';
@@ -196,6 +200,10 @@ Future<TestBuilderResult> testBuilder(
 /// To mark a builder as optional, add it to [optionalBuilders]. Optional
 /// builders only run if their output is used by a non-optional builder.
 ///
+/// To mark a builder's output as visible, add it to [visibleOutputBuilders].
+/// The builder then writes its outputs next to its input, instead of hidden
+/// under `.dart_tool`.
+///
 /// The default builder config will be overwritten with one that causes the
 /// builder to run for all inputs. To use the default builder config instead,
 /// set [testingBuilderConfig] to `false`.
@@ -221,22 +229,27 @@ Future<TestBuilderResult> testBuilders(
   PackageConfig? packageConfig,
   Resolvers? resolvers,
   Set<Builder> optionalBuilders = const {},
+  Set<Builder> visibleOutputBuilders = const {},
   bool testingBuilderConfig = true,
   TestReaderWriter? readerWriter,
   bool enableLowResourceMode = false,
 }) async {
-  onLog ??=
-      (log) => printOnFailure(
-        '$log'
-        '${log.error == null ? '' : '  ${log.error}'}'
-        '${log.stackTrace == null ? '' : '  ${log.stackTrace}'}',
-      );
+  onLog ??= _printOnFailureOrWrite;
 
   var inputIds = {
     for (var descriptor in sourceAssets.keys) makeAssetId(descriptor),
   };
 
-  var allPackages = {for (var id in inputIds) id.package};
+  // Differentiate input packages and all packages. Builders run on input
+  // packages; they can read/resolve all packages. Additional packages are
+  // supplied by passing a `readerWriter`.
+  var inputPackages = {for (var id in inputIds) id.package};
+  final allPackages = inputPackages.toSet();
+  if (readerWriter != null) {
+    for (final asset in readerWriter.testing.assets) {
+      allPackages.add(asset.package);
+    }
+  }
   rootPackage ??= allPackages.first;
 
   readerWriter ??= TestReaderWriter(rootPackage: rootPackage);
@@ -253,7 +266,9 @@ Future<TestBuilderResult> testBuilders(
   final inputFilter = isInput ?? generateFor?.contains ?? (_) => true;
   inputIds.retainWhere((id) => inputFilter('$id'));
 
-  var logSubscription = Logger.root.onRecord.listen(onLog);
+  buildLog.configuration = buildLog.configuration.rebuild((b) {
+    b.onLog = onLog;
+  });
   resolvers ??=
       packageConfig == null && enabledExperiments.isEmpty
           ? AnalyzerResolvers.sharedInstance
@@ -289,18 +304,18 @@ Future<TestBuilderResult> testBuilders(
   }
 
   final buildOptions = await BuildOptions.create(
-    _NoopLogSubscription(),
     packageGraph: packageGraph,
+    reader: environment.reader,
     reportUnusedAssetsForInput: reportUnusedAssetsForInput,
     resolvers: resolvers,
     overrideBuildConfig:
-        // Override sources to all inputs, optionally restricted by
-        // [inputFilter] or [generateFor]. Or if [testingBuilderConfig] is
-        // false, use the defaults. These skip some files, for example
-        // picking up `lib/**` but not all files in the package root.
+        // Override sources to defaults plus all explicitly passed inputs,
+        // optionally restricted by [inputFilter] or [generateFor]. Or if
+        // [testingBuilderConfig] is false, use the defaults. These skip some
+        // files, for example picking up `lib/**` but not all files in the package root.
         testingBuilderConfig
             ? {
-              for (final package in allPackages)
+              for (final package in inputPackages)
                 package: BuildConfig.fromMap(package, [], {
                   'targets': {
                     package: {
@@ -309,9 +324,13 @@ Future<TestBuilderResult> testBuilders(
                         r'lib/$lib$',
                         r'test/$test$',
                         r'web/$web$',
+                        if (package == rootPackage)
+                          ...defaultRootPackageSources,
+                        if (package != rootPackage)
+                          ...defaultNonRootVisibleAssets,
                         ...inputIds
                             .where((id) => id.package == package)
-                            .map((id) => id.path),
+                            .map((id) => Glob.quote(id.path)),
                       ],
                     },
                   },
@@ -322,6 +341,9 @@ Future<TestBuilderResult> testBuilders(
     // didn't change. Skip it to allow testing with preserved state.
     skipBuildScriptCheck: true,
     enableLowResourcesMode: enableLowResourceMode,
+    // If a builder has visible output, it might need to be deleted. Do so
+    // without prompting.
+    deleteFilesByDefault: true,
   );
 
   final buildSeries = await BuildSeries.create(buildOptions, environment, [
@@ -329,8 +351,9 @@ Future<TestBuilderResult> testBuilders(
       apply(
         builderName(builder),
         [(_) => builder],
-        (package) => package.name != r'$sdk',
+        (p) => inputPackages.contains(p.name),
         isOptional: optionalBuilders.contains(builder),
+        hideOutput: !visibleOutputBuilders.contains(builder),
       ),
   ], {});
 
@@ -341,7 +364,9 @@ Future<TestBuilderResult> testBuilders(
   await buildSeries.beforeExit();
 
   // Stop logging.
-  await logSubscription.cancel();
+  buildLog.configuration = buildLog.configuration.rebuild((b) {
+    b.onLog = null;
+  });
 
   // Check the build outputs as requested.
   checkOutputs(outputs, readerWriter.testing.assetsWritten, readerWriter);
@@ -359,9 +384,17 @@ class TestBuilderResult {
   TestBuilderResult({required this.buildResult, required this.readerWriter});
 }
 
-/// [LogSubscription] that does nothing.
-class _NoopLogSubscription implements LogSubscription {
-  @override
-  StreamSubscription<LogRecord> get logListener =>
-      StreamController<LogRecord>().stream.listen((_) {});
+void _printOnFailureOrWrite(LogRecord record) {
+  final message =
+      '$record'
+      '${record.error == null ? '' : '  ${record.error}'}'
+      '${record.stackTrace == null ? '' : '  ${record.stackTrace}'}';
+  try {
+    // This throws if a test is not currently running.
+    printOnFailure(message);
+  } catch (_) {
+    // Write instead. Don't `print` because that would hit the Zone print
+    // handler if logging from a builder.
+    stdout.writeln(message);
+  }
 }

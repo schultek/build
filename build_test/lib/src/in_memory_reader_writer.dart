@@ -17,6 +17,7 @@ import 'package:path/path.dart' as p;
 import 'package:watcher/watcher.dart';
 
 import 'fake_watcher.dart';
+import 'package_reader.dart';
 import 'test_reader_writer.dart';
 
 /// The implementation behind [TestReaderWriter].
@@ -183,6 +184,20 @@ class _ReaderWriterTestingImpl implements ReaderWriterTesting {
   _ReaderWriterTestingImpl(this._readerWriter);
 
   @override
+  Future<void> loadIsolateSources() async {
+    final reader = await PackageAssetReader.currentIsolate();
+    for (final package in reader.packageConfig.packages) {
+      await for (final id in reader.findAssets(
+        Glob('**'),
+        package: package.name,
+      )) {
+        // Write via `testing` so it's not tracked as a builder output.
+        _readerWriter.testing.writeBytes(id, await reader.readAsBytes(id));
+      }
+    }
+  }
+
+  @override
   Iterable<AssetId> get assets =>
       (_readerWriter.filesystem as InMemoryFilesystem).filePaths.map(
         AssetId.parse,
@@ -195,8 +210,38 @@ class _ReaderWriterTestingImpl implements ReaderWriterTesting {
           .toSet();
 
   @override
+  Iterable<AssetId> inputsTrackedFor({
+    AssetId? primaryInput,
+    String? builderLabel,
+  }) =>
+      InputTracker.inputTrackersForTesting[_readerWriter.filesystem]!
+          .where((inputTracker) {
+            return (primaryInput == null ||
+                    primaryInput == inputTracker.primaryInput) &&
+                (builderLabel == null ||
+                    builderLabel == inputTracker.builderLabel);
+          })
+          .expand((tracker) => tracker.inputs)
+          .toSet();
+
+  @override
   Iterable<AssetId> get resolverEntrypointsTracked =>
       InputTracker.inputTrackersForTesting[_readerWriter.filesystem]!
+          .expand((tracker) => tracker.resolverEntrypoints)
+          .toSet();
+
+  @override
+  Iterable<AssetId> resolverEntrypointsTrackedFor({
+    AssetId? primaryInput,
+    String? builderLabel,
+  }) =>
+      InputTracker.inputTrackersForTesting[_readerWriter.filesystem]!
+          .where((inputTracker) {
+            return (primaryInput == null ||
+                    primaryInput == inputTracker.primaryInput) &&
+                (builderLabel == null ||
+                    builderLabel == inputTracker.builderLabel);
+          })
           .expand((tracker) => tracker.resolverEntrypoints)
           .toSet();
 

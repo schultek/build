@@ -1,10 +1,20 @@
-## 4.1.5+1
+## 4.2.1
 
-- Fixed compilation for flutter 3.32.0 and later.
+- Remove unused deps: `build_config`.
+- Allow `analyzer` 8.0.0.
+
+## 4.2.0
+
+- Allow `build` 3.0.0.
+
+## 4.1.6
+
+- Allow Dart SDK 3.9.x and 3.10 prerelease.
 
 ## 4.1.5
 
 - Remove dependency on the deprecated `package:js`.
+- Fixed compilation for flutter 3.32.0 and later.
 
 ## 4.1.4
 

@@ -8,13 +8,12 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:build_runner/src/build_script_generate/bootstrap.dart';
+import 'package:build_runner/src/build_script_generate/build_process_state.dart';
 import 'package:build_runner/src/entrypoint/options.dart';
 import 'package:build_runner/src/entrypoint/runner.dart';
-import 'package:build_runner/src/logging/std_io_logging.dart';
 import 'package:build_runner_core/build_runner_core.dart';
 import 'package:io/ansi.dart';
 import 'package:io/io.dart';
-import 'package:logging/logging.dart';
 
 import 'src/commands/clean.dart';
 import 'src/commands/generate_build_script.dart';
@@ -37,7 +36,7 @@ Future<void> main(List<String> args) async {
       abbr: 'v',
       defaultsTo: false,
       negatable: false,
-      help: 'Enables verbose logging.',
+      help: 'Verbose logging: displays info logged by builders.',
     );
   }
 
@@ -77,33 +76,26 @@ Future<void> main(List<String> args) async {
     return;
   }
 
-  StreamSubscription logListener;
-  if (commandName == 'daemon') {
-    // Simple logs only in daemon mode. These get converted into info or
-    // severe logs by the client.
-    logListener = Logger.root.onRecord.listen((record) {
-      if (record.level >= Level.SEVERE) {
-        var buffer = StringBuffer(record.message);
-        if (record.error != null) buffer.writeln(record.error);
-        if (record.stackTrace != null) buffer.writeln(record.stackTrace);
-        stderr.writeln(buffer);
-      } else {
-        stdout.writeln(record.message);
-      }
-    });
-  } else {
-    var verbose = parsedArgs.command!['verbose'] as bool? ?? false;
-    if (verbose) Logger.root.level = Level.ALL;
-    logListener = Logger.root.onRecord.listen(
-      stdIOLogListener(verbose: verbose),
-    );
-  }
   if (localCommandNames.contains(commandName)) {
     exitCode = await commandRunner.runCommand(parsedArgs) ?? 1;
   } else {
     var experiments = parsedArgs.command!['enable-experiment'] as List<String>?;
+    // Set the buildLog mode before the command starts so the first few log
+    // messages are displayed correctly.
+    switch (commandName) {
+      case 'build':
+      case 'serve':
+      case 'watch':
+      case 'test':
+        buildLog.configuration = buildLog.configuration.rebuild((b) {
+          b.mode = BuildLogMode.build;
+        });
+      case 'daemon':
+        buildLog.configuration = buildLog.configuration.rebuild((b) {
+          b.mode = BuildLogMode.daemon;
+        });
+    }
     while ((exitCode = await generateAndRun(args, experiments: experiments)) ==
         ExitCode.tempFail.code) {}
   }
-  await logListener.cancel();
 }

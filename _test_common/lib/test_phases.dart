@@ -5,7 +5,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:build/build.dart';
-import 'package:build_config/build_config.dart';
 import 'package:build_runner_core/build_runner_core.dart';
 import 'package:build_test/build_test.dart';
 // ignore: implementation_imports
@@ -52,8 +51,7 @@ void _printOnFailure(LogRecord record) {
 ///
 /// [status] optionally indicates the desired outcome.
 ///
-/// [logLevel] sets the builder log level and [onLog] can optionally capture
-/// build log messages.
+/// [onLog] can optionally capture log messages.
 ///
 /// Example:
 ///
@@ -79,14 +77,11 @@ Future<TestBuildersResult> testPhases(
   Map<String, /*String|List<int>*/ Object>? outputs,
   PackageGraph? packageGraph,
   BuildStatus status = BuildStatus.success,
-  Map<String, BuildConfig>? overrideBuildConfig,
-  Level? logLevel,
   // A better way to "silence" logging than setting logLevel to OFF.
   void Function(LogRecord record) onLog = _printOnFailure,
   bool checkBuildStatus = true,
   bool deleteFilesByDefault = true,
   bool enableLowResourcesMode = false,
-  Map<String, Map<String, dynamic>>? builderConfigOverrides,
   bool verbose = false,
   Set<BuildDirectory> buildDirs = const {},
   Set<BuildFilter> buildFilters = const {},
@@ -136,24 +131,22 @@ Future<TestBuildersResult> testPhases(
     }
   });
 
-  builderConfigOverrides ??= const {};
   var environment = BuildEnvironment(
     packageGraph,
     reader: readerWriter,
     writer: readerWriter,
-    onLogOverride: onLog,
   );
-  var logSubscription = LogSubscription(
-    environment,
-    verbose: verbose,
-    logLevel: logLevel,
-  );
+
+  buildLog.configuration = buildLog.configuration.rebuild((b) {
+    b.onLog = onLog;
+    b.verbose = verbose;
+  });
+
   var options = await BuildOptions.create(
-    logSubscription,
-    deleteFilesByDefault: deleteFilesByDefault,
     packageGraph: packageGraph,
+    reader: environment.reader,
+    deleteFilesByDefault: deleteFilesByDefault,
     skipBuildScriptCheck: true,
-    overrideBuildConfig: overrideBuildConfig ?? const {},
     enableLowResourcesMode: enableLowResourcesMode,
     logPerformanceDir: logPerformanceDir,
   );
@@ -163,7 +156,7 @@ Future<TestBuildersResult> testPhases(
     options,
     environment,
     builders,
-    builderConfigOverrides,
+    const {},
     isReleaseBuild: false,
   );
   result = await build.run(
@@ -172,7 +165,6 @@ Future<TestBuildersResult> testPhases(
     buildFilters: buildFilters,
   );
   await build.beforeExit();
-  await options.logListener.cancel();
 
   if (checkBuildStatus) {
     checkBuild(

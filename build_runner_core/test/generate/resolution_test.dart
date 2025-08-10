@@ -12,6 +12,10 @@ import 'package:build_runner_core/build_runner_core.dart';
 import 'package:test/test.dart';
 
 void main() {
+  setUp(() {
+    BuildLog.resetForTests(printOnFailure: printOnFailure);
+  });
+
   test('should resolve a dart file with a part file', () async {
     await testPhases(
       [applyToRoot(ListClassesAndHierarchyBuilder())],
@@ -48,12 +52,12 @@ class ListClassesAndHierarchyBuilder implements Builder {
     }
     // Process both the main and part files of a given library.
     final library = await buildStep.inputLibrary;
-    final types = library.units.expand((element) => element.classes);
+    final types = library.classes;
     final output = StringBuffer();
     final outputId = buildStep.inputId.changeExtension('.txt');
     for (final type in types) {
       output
-        ..write('${type.name}: [')
+        ..write('${type.name3}: [')
         ..writeAll(type.allSupertypes.map((t) => t.element.name), ', ')
         ..writeln(']');
     }

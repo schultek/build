@@ -1,16 +1,68 @@
-## 3.0.0-wip
+## 3.3.1
 
-- Bump the min SDK to 3.7.0.
-- Use `build_runner_core` 9.0.0.
-- `resolveSources` and `testBuilder` now do a full `build_runner` build, with
-  configuration as much as possible based on the some parameters.
-- Add `testBuilders` to run a test build with multiple builders.
-- Add `optionalBuilder` to `testBuilders` to have some builders be optional.
-- Add `testingBuilderConfig` to `testBuilders` to control builder config
-  override.
-- Add `resolvers` parameter to `testBuild` and `testBuilders`.
-- Add `readerWriter` and `enableLowResourceMode` parameters to `testBuild`
-  and `testBuilders`.
+- Use `build` 3.0.1.
+- Allow `analyzer` 8.0.0.
+
+## 3.3.0
+
+- Read build configs using `AssetReader` so they're easier to test: you can now
+  pass in `build.yaml` like any other asset.
+- Bug fix: don't crash when a builder logs during a `testBuilder` or
+  `resolveSource` call outside a test.
+- Remove unused deps: `async`, `convert`.
+- Remove unused dev_deps: `collection`.
+- Files loaded from disk for `resolveSources` and `testBuilders` that are in
+  the same package as explicitly-passed test inputs are now loaded if they
+  match the default globs, such as `lib/**`, instead of ignored. This more
+  closely matches version 2 behavior.
+- Use `build` 3.0.0.
+- Use `build_resolvers` 3.0.0.
+
+## 3.3.0-dev.3
+
+- Read build configs using `AssetReader` so they're easier to test: you can now
+  pass in `build.yaml` like any other asset.
+- Bug fix: don't crash when a builder logs during a `testBuilder` or
+  `resolveSource` call outside a test.
+- Remove unused deps: `async`, `convert`.
+- Remove unused dev_deps: `collection`.
+
+## 3.3.0-dev.2
+
+- Files loaded from disk for `resolveSources` and `testBuilders` that are in
+  the same package as explicitly-passed test inputs are now loaded if they
+  match the default globs, such as `lib/**`, instead of ignored. This more
+  closely matches version 2 behavior.
+
+## 3.3.0-dev.1
+
+- Use `build` 3.0.0-dev.1.
+- Use `build_resolvers` 3.0.0-dev.1.
+
+## 3.2.0
+
+- Fixes when passing a `readerWriter` to `testBuilders`: don't count initial
+  assets as outputs; do set up packages for initial assets; only apply builders
+  to packages mentioned in `sourceAssets`.
+- Add `readAllSourcesFromFilesystem` parameter to `resolveSources`. Set it to
+  `true` to make the method behave as it did in `build_test` 2.2.0.
+- Fix to `resolveSources` error handling.
+
+## 3.1.0
+
+- Add `inputsTrackedFor` and `resolverEntrypointsTrackedFor` to
+  `ReaderWriterTesting`, so tests can determine what each build step
+  read and resolved.
+- Add `loadIsolateSources` to `ReaderWriterTesting`. It loads all real
+  sources visible to the test into memory.
+- `testBuilder` default `onLog` now works outside of tests: it falls
+  back to `print` instead of crashing.
+- Update `README.md`.
+
+## 3.0.0
+
+Breaking changes:
+
 - Breaking change: removed `tearDown` parameter to `resolveSources` for
   keeping resolvers across multiple tests.
 - Breaking change: tests must use new `TestReaderWriter` instead of
@@ -29,9 +81,31 @@
   resolver entrypoints are now tracked separately from inputs, see
   `TestReaderWriter.resolverEntrypointsTracked`.
 - Breaking change: Remove `StubAssetReader`. Use `TestReaderWriter` instead.
+
+Other user-visible changes:
+
+- `resolveSources` and `testBuilder` now do a full `build_runner` build, with
+  configuration as much as possible based on the some parameters.
+- Add `testBuilders` to run a test build with multiple builders.
+- Add `optionalBuilders` to `testBuilders` to have some builders be optional.
+- Add `visibleOutputBuilders` to `testBuilders` to have some builders write
+  their output next to their inputs.
+- Add `testingBuilderConfig` to `testBuilders` to control builder config
+  override.
+- Add `resolvers` parameter to `testBuild` and `testBuilders`.
+- Add `readerWriter` and `enableLowResourceMode` parameters to `testBuild`
+  and `testBuilders`.
 - `TestReaderWriter` writes and deletes are notified to `FakeWatcher`.
 - `TestReaderWriter` tracks `assetsWritten`.
 - Support checks on reader state after a build action in `resolveSources`.
+
+Versions:
+
+- Bump the min SDK to 3.7.0.
+- Use `build_runner_core` 9.0.0.
+
+Internal changes:
+
 - Start using `package:build/src/internal.dart`.
 - Refactor `BuildCacheReader` to `BuildCacheAssetPathProvider`.
 - Refactor `FileBasedAssetReader` and `FileBasedAssetWriter` to `ReaderWriter`.

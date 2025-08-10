@@ -100,7 +100,10 @@ abstract class AssetNode implements Built<AssetNode, AssetNodeBuilder> {
 
   /// Whether changes to this node will have any effect on other nodes.
   bool get changesRequireRebuild =>
-      type == NodeType.internal || type == NodeType.glob || digest != null;
+      type == NodeType.internal ||
+      type == NodeType.glob ||
+      type == NodeType.missingSource ||
+      digest != null;
 
   factory AssetNode([void Function(AssetNodeBuilder) updates]) = _$AssetNode;
 
@@ -285,6 +288,8 @@ abstract class GeneratedNodeState
   /// Generation can succeed without writing the output: see
   /// [AssetNode.wasOutput].
   bool? get result;
+
+  BuiltList<String> get errors;
 
   factory GeneratedNodeState(void Function(GeneratedNodeStateBuilder) updates) =
       _$GeneratedNodeState;
