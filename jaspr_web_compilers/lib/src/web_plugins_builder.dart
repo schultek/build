@@ -48,6 +48,8 @@ class WebPluginsBuilder implements Builder {
       pubspec = loadYaml(await buildStep.readAsString(pubspecId));
     } on YamlException catch (_) {
       // Do nothing, potentially not a plugin.
+    } on AssetNotFoundException catch (_) {
+      // Do nothing, potentially not a plugin.
     }
 
     if (pubspec case {

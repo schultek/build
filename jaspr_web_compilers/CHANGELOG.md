@@ -1,3 +1,7 @@
+# 4.2.1+1
+
+- Fixed `web_plugins` builder to ignore `AssetNotFoundException`s.
+
 ## 4.2.1
 
 - Remove unused deps: `build_config`.
