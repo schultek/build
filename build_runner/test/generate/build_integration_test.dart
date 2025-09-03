@@ -20,7 +20,7 @@ void main() {
       var originalBuildContent = '''
 import 'dart:io';
 import 'package:build_runner/build_runner.dart';
-import 'package:build_runner_core/build_runner_core.dart';
+import 'package:build_runner/src/package_graph/apply_builders.dart';
 import 'package:build_test/build_test.dart';
 
 main(List<String> args) async {
@@ -36,9 +36,7 @@ main(List<String> args) async {
               'build',
               'build_config',
               'build_daemon',
-              'build_resolvers',
               'build_runner',
-              'build_runner_core',
               'build_test',
               'code_builder',
               'glob',
@@ -65,11 +63,7 @@ main(List<String> args) async {
         ]).create();
 
         // Run a build and validate the full rebuild output.
-        var result = await runDart(
-          'a',
-          'tool/build.dart',
-          args: ['build', '--delete-conflicting-outputs'],
-        );
+        var result = await runDart('a', 'tool/build.dart', args: ['build']);
         expect(result.exitCode, 0, reason: result.stderr as String);
         expect(
           result.stdout,
@@ -90,11 +84,7 @@ main(List<String> args) async {
           d.dir('tool', [d.file('build.dart', changedBuildScript)]),
         ]).create();
 
-        var result = await runDart(
-          'a',
-          'tool/build.dart',
-          args: ['build', '--delete-conflicting-outputs'],
-        );
+        var result = await runDart('a', 'tool/build.dart', args: ['build']);
         expect(result.exitCode, 0, reason: result.stderr as String);
         expect(
           result.stdout,
@@ -206,9 +196,7 @@ main(List<String> args) async {
               'build',
               'build_config',
               'build_daemon',
-              'build_resolvers',
               'build_runner',
-              'build_runner_core',
               'build_test',
               'code_builder',
               'glob',
@@ -219,7 +207,7 @@ main(List<String> args) async {
             d.file('build.dart', '''
 import 'dart:io';
 import 'package:build_runner/build_runner.dart';
-import 'package:build_runner_core/build_runner_core.dart';
+import 'package:build_runner/src/package_graph/apply_builders.dart';
 import 'package:build_test/build_test.dart';
 
 main(List<String> args) async {
@@ -287,9 +275,7 @@ main(List<String> args) async {
               'build',
               'build_config',
               'build_daemon',
-              'build_resolvers',
               'build_runner',
-              'build_runner_core',
               'build_test',
               'code_builder',
               'glob',
@@ -301,7 +287,7 @@ import 'dart:async';
 
 import 'package:build/build.dart';
 import 'package:build_runner/build_runner.dart';
-import 'package:build_runner_core/build_runner_core.dart';
+import 'package:build_runner/src/package_graph/apply_builders.dart';
 import 'package:build_test/build_test.dart';
 import 'package:glob/glob.dart';
 
@@ -400,9 +386,7 @@ main() async {
               'build',
               'build_config',
               'build_daemon',
-              'build_resolvers',
               'build_runner',
-              'build_runner_core',
               'build_test',
               'code_builder',
               'glob',
@@ -414,7 +398,7 @@ import 'dart:async';
 
 import 'package:build/build.dart';
 import 'package:build_runner/build_runner.dart';
-import 'package:build_runner_core/build_runner_core.dart';
+import 'package:build_runner/src/package_graph/apply_builders.dart';
 import 'package:build_test/build_test.dart';
 import 'package:glob/glob.dart';
 
@@ -473,7 +457,7 @@ class OverDeclaringGlobbingBuilder extends GlobbingBuilder {
       final buildContent = '''
 import 'package:build/build.dart';
 import 'package:build_runner/build_runner.dart';
-import 'package:build_runner_core/build_runner_core.dart';
+import 'package:build_runner/src/package_graph/apply_builders.dart';
 import 'package:build_test/build_test.dart';
 
 main(List<String> args) async {
@@ -516,9 +500,7 @@ main(List<String> args) async {
               'build',
               'build_config',
               'build_daemon',
-              'build_resolvers',
               'build_runner',
-              'build_runner_core',
               'build_test',
               'code_builder',
             ],
@@ -556,7 +538,7 @@ targets:
     final buildContent = '''
 import 'package:build/build.dart';
 import 'package:build_runner/build_runner.dart';
-import 'package:build_runner_core/build_runner_core.dart';
+import 'package:build_runner/src/package_graph/apply_builders.dart';
 import 'package:build_test/build_test.dart';
 
 main(List<String> args) async {
@@ -576,9 +558,7 @@ main(List<String> args) async {
             'build',
             'build_config',
             'build_daemon',
-            'build_resolvers',
             'build_runner',
-            'build_runner_core',
             'build_test',
             'code_builder',
           ],
@@ -609,9 +589,7 @@ targets:
             'build',
             'build_config',
             'build_daemon',
-            'build_resolvers',
             'build_runner',
-            'build_runner_core',
             'build_test',
             'code_builder',
           ],
@@ -640,9 +618,7 @@ global_options:
             'build',
             'build_config',
             'build_daemon',
-            'build_resolvers',
             'build_runner',
-            'build_runner_core',
             'build_test',
             'code_builder',
           ],
@@ -669,9 +645,7 @@ global_options:
             'build',
             'build_config',
             'build_daemon',
-            'build_resolvers',
             'build_runner',
-            'build_runner_core',
             'build_test',
             'code_builder',
             'glob',
@@ -682,7 +656,7 @@ global_options:
 import 'dart:io';
 
 import 'package:build_runner/build_runner.dart';
-import 'package:build_runner_core/build_runner_core.dart';
+import 'package:build_runner/src/package_graph/apply_builders.dart';
 import 'package:build_test/build_test.dart';
 
 main() async {
@@ -703,15 +677,7 @@ main() async {
 
       var result = await runDart('a', 'tool/build.dart', args: ['build']);
 
-      expect(
-        result.exitCode,
-        isNot(0),
-        reason: 'build should fail due to conflicting outputs',
-      );
-      expect(
-        result.stdout,
-        allOf(contains('Conflicting outputs'), contains('web/a.txt.copy.copy')),
-      );
+      expect(result.exitCode, 0, reason: result.stderr as String);
     });
 
     test('Missing build_test dependency reports the right error', () async {
@@ -722,9 +688,7 @@ main() async {
             'build',
             'build_config',
             'build_daemon',
-            'build_resolvers',
             'build_runner',
-            'build_runner_core',
             'code_builder',
           ],
         ),
@@ -753,9 +717,7 @@ main() async {
             'build',
             'build_config',
             'build_daemon',
-            'build_resolvers',
             'build_runner',
-            'build_runner_core',
             'build_test',
             'code_builder',
           ],

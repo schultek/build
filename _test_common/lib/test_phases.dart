@@ -5,10 +5,12 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:build/build.dart';
-import 'package:build_runner_core/build_runner_core.dart';
+// ignore: implementation_imports
+import 'package:build_runner/src/internal.dart';
 import 'package:build_test/build_test.dart';
 // ignore: implementation_imports
 import 'package:build_test/src/in_memory_reader_writer.dart';
+import 'package:built_collection/built_collection.dart';
 import 'package:logging/logging.dart';
 import 'package:test/test.dart';
 
@@ -80,13 +82,11 @@ Future<TestBuildersResult> testPhases(
   // A better way to "silence" logging than setting logLevel to OFF.
   void Function(LogRecord record) onLog = _printOnFailure,
   bool checkBuildStatus = true,
-  bool deleteFilesByDefault = true,
   bool enableLowResourcesMode = false,
   bool verbose = false,
   Set<BuildDirectory> buildDirs = const {},
   Set<BuildFilter> buildFilters = const {},
   String? logPerformanceDir,
-  String expectedGeneratedDir = 'generated',
   void Function(AssetId id)? onDelete,
 }) async {
   packageGraph ??= buildPackageGraph({rootPackage('a'): []});
@@ -131,39 +131,33 @@ Future<TestBuildersResult> testPhases(
     }
   });
 
-  var environment = BuildEnvironment(
-    packageGraph,
-    reader: readerWriter,
-    writer: readerWriter,
-  );
-
   buildLog.configuration = buildLog.configuration.rebuild((b) {
     b.onLog = onLog;
     b.verbose = verbose;
   });
 
-  var options = await BuildOptions.create(
-    packageGraph: packageGraph,
-    reader: environment.reader,
-    deleteFilesByDefault: deleteFilesByDefault,
-    skipBuildScriptCheck: true,
-    enableLowResourcesMode: enableLowResourcesMode,
-    logPerformanceDir: logPerformanceDir,
+  final buildPlan = await BuildPlan.load(
+    builders: builders.build(),
+    // ignore: invalid_use_of_visible_for_testing_member
+    buildOptions: BuildOptions.forTests(
+      buildDirs: buildDirs.build(),
+      buildFilters: buildFilters.build(),
+      enableLowResourcesMode: enableLowResourcesMode,
+      logPerformanceDir: logPerformanceDir,
+      skipBuildScriptCheck: true,
+      trackPerformance: logPerformanceDir != null,
+      verbose: verbose,
+    ),
+    testingOverrides: TestingOverrides(
+      packageGraph: packageGraph,
+      reader: readerWriter,
+      writer: readerWriter,
+    ),
   );
 
   BuildResult result;
-  var build = await BuildRunner.create(
-    options,
-    environment,
-    builders,
-    const {},
-    isReleaseBuild: false,
-  );
-  result = await build.run(
-    {},
-    buildDirs: buildDirs,
-    buildFilters: buildFilters,
-  );
+  final build = await BuildSeries.create(buildPlan: buildPlan);
+  result = await build.run({});
   await build.beforeExit();
 
   if (checkBuildStatus) {
@@ -173,7 +167,6 @@ Future<TestBuildersResult> testPhases(
       readerWriter: readerWriter,
       status: status,
       rootPackage: packageGraph.root.name,
-      expectedGeneratedDir: expectedGeneratedDir,
     );
   }
 
@@ -188,7 +181,6 @@ void checkBuild(
   required TestReaderWriter readerWriter,
   BuildStatus status = BuildStatus.success,
   String rootPackage = 'a',
-  String expectedGeneratedDir = 'generated',
 }) {
   expect(result.status, status, reason: '$result');
 
@@ -204,11 +196,11 @@ void checkBuild(
     }
   }
 
-  AssetId mapHidden(AssetId id, String expectedGeneratedDir) =>
+  AssetId mapHidden(AssetId id) =>
       unhiddenAssets.contains(id)
           ? AssetId(
             rootPackage,
-            '.dart_tool/build/$expectedGeneratedDir/${id.package}/${id.path}',
+            '.dart_tool/build/generated/${id.package}/${id.path}',
           )
           : id;
 
@@ -217,7 +209,7 @@ void checkBuild(
       unhiddenOutputs,
       result.outputs,
       readerWriter,
-      mapAssetIds: (id) => mapHidden(id, expectedGeneratedDir),
+      mapAssetIds: mapHidden,
     );
   }
 }

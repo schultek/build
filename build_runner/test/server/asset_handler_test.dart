@@ -6,14 +6,13 @@ import 'dart:io';
 
 import 'package:_test_common/common.dart';
 import 'package:build/build.dart';
+import 'package:build_runner/src/asset/finalized_reader.dart';
+import 'package:build_runner/src/asset_graph/graph.dart';
+import 'package:build_runner/src/asset_graph/node.dart';
+import 'package:build_runner/src/asset_graph/post_process_build_step_id.dart';
+import 'package:build_runner/src/generate/build_phases.dart';
+import 'package:build_runner/src/package_graph/target_graph.dart';
 import 'package:build_runner/src/server/server.dart';
-import 'package:build_runner_core/build_runner_core.dart';
-import 'package:build_runner_core/src/asset_graph/graph.dart';
-import 'package:build_runner_core/src/asset_graph/node.dart';
-import 'package:build_runner_core/src/asset_graph/post_process_build_step_id.dart';
-import 'package:build_runner_core/src/generate/build_phases.dart';
-import 'package:build_runner_core/src/generate/options.dart';
-import 'package:build_runner_core/src/package_graph/target_graph.dart';
 import 'package:crypto/crypto.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
@@ -37,10 +36,7 @@ void main() {
     reader = FinalizedReader(
       delegate,
       graph,
-      await TargetGraph.forPackageGraph(
-        packageGraph,
-        defaultRootPackageSources: defaultRootPackageSources,
-      ),
+      await TargetGraph.forPackageGraph(packageGraph: packageGraph),
       BuildPhases([]),
       'a',
     );

@@ -1,3 +1,25 @@
+## 3.3.5-wip
+
+- Use `build_runner_core` 9.4.0.
+- Remove unused dep: `build_resolvers`.
+- Remove unused dep: `build_runner_core`.
+
+## 3.3.4
+
+- Use `build` 4.0.0.
+- Use `build_runner` 2.7.2.
+
+## 3.3.3
+
+- Use `build` 3.1.0.
+- Use `build_runner` 2.7.1.
+
+## 3.3.2
+
+- Use `build` 3.0.2.
+- Use `build_runner` 2.7.0.
+- Documentation revamp.
+
 ## 3.3.1
 
 - Use `build` 3.0.1.

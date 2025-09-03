@@ -1,3 +1,29 @@
+## 4.0.0
+
+- Remove methods and classes deprecated in `4.0.0`.
+- Make `AssetReader.digest` abstract.
+- Remove unused deps: `async`, `build_runner_core`, `convert`.
+
+## 3.1.0
+
+- Deprecate `runBuilder`. It has been moved to `package:build_runner_core` and
+  will be removed from `package:build`. Please note: the currently supported
+  ways to run builders are using `build_runner` on the command line or
+  `build_test` in tests. If you need ongoing support for a different way to run
+  builders please get in touch at
+  https://github.com/dart-lang/build/discussions.
+- Deprecate `runPostProcessBuilder`. Like `runBuilder`, it has been moved to
+  `package:build_runner_core` and will be removed from `package:build`.
+- Deprecate `AssetWriterSpy`. It will be removed.
+- Deprecate `MultiplexingBuilder`. It will be removed.
+- Use `build_runner_core` 9.3.1.
+
+## 3.0.2
+
+- Use `build_runner_core` 9.3.0.
+- Documentation revamp.
+- Allow `meta` 1.16.0.
+
 ## 3.0.1
 
 - Small improvements to RAM usage.
@@ -123,8 +149,7 @@ Internal changes:
 ## 2.1.0
 
 - Expand the expressiveness of `buildExtensions` include capture groups,
-  enabling directory moves. For more information on this feature, see
-  [capture groups](https://github.com/dart-lang/build/blob/master/docs/writing_a_builder.md#capture-groups)
+  enabling directory moves.
 - Add an `allowedOutputs` getter to `BuildStep`. It returns assets that may be
   written in that step.
 

@@ -16,7 +16,7 @@ import 'package:build_daemon/data/build_status.dart';
 import 'package:build_daemon/data/build_target.dart';
 import 'package:build_daemon/data/shutdown_notification.dart';
 import 'package:build_runner/src/daemon/constants.dart';
-import 'package:build_runner_core/src/util/constants.dart' show dartBinary;
+import 'package:build_runner/src/util/constants.dart' show dartBinary;
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:test_descriptor/test_descriptor.dart' as d;
@@ -43,9 +43,7 @@ void main() {
           'build_config',
           'build_daemon',
           'build_modules',
-          'build_resolvers',
           'build_runner',
-          'build_runner_core',
           'build_test',
           'build_web_compilers',
           'code_builder',

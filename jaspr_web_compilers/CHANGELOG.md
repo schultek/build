@@ -1,6 +1,11 @@
-# 4.2.1+1
+## 4.2.3
 
+- Allow `build` 4.0.0.
 - Fixed `web_plugins` builder to ignore `AssetNotFoundException`s.
+
+## 4.2.2
+
+- Documentation revamp.
 
 ## 4.2.1
 
