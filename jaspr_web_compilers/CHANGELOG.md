@@ -1,3 +1,7 @@
+## 4.2.3+1
+
+- Fixed `web_plugins` builder when used in a workspace.
+
 ## 4.2.3
 
 - Allow `build` 4.0.0.

@@ -18,10 +18,33 @@ class WebPluginsBuilder implements Builder {
 
   @override
   FutureOr<void> build(BuildStep buildStep) async {
+    var pubspecId = AssetId(buildStep.inputId.package, 'pubspec.yaml');
+    if (!await buildStep.canRead(pubspecId)) {
+      return;
+    }
+
+    final pubspecYaml = loadYaml(await buildStep.readAsString(pubspecId));
+
+    final isWorkspace = switch (pubspecYaml) {
+      {'resolution': 'workspace'} => true,
+      _ => false,
+    };
+
     var packageConfig = await buildStep.packageConfig;
     final plugins = <Plugin>[];
 
     for (var package in packageConfig.packages) {
+      if (isWorkspace) {
+        if (pubspecYaml case {
+          'dependencies': Map dependencies,
+        } when dependencies[package.name] != null) {
+          // If we're in a workspace, only consider packages that are direct
+          // dependencies.
+        } else {
+          continue;
+        }
+      }
+
       final plugin = await _loadPluginForPackage(package, buildStep);
       if (plugin != null) {
         plugins.add(plugin);
