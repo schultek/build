@@ -1,4 +1,12 @@
-## 3.5.0-wip
+## 3.5.2-wip
+
+- Use `build_runner` 2.10.2.
+
+## 3.5.1
+
+- Use `build_runner` 2.10.1.
+
+## 3.5.0
 
 - Improve `TestBuilderResult`: add `succeeded`, `outputs` and `errors`.
   Deprecate `buildResult` in favor of these new members.
