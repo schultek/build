@@ -1,8 +1,27 @@
-## 2.7.3-wip
+## 2.9.1-wip
 
+- Internal changes for `build_test`.
+
+## 2.9.0
+
+- Watch mode: handle builder code and config changes without recompiling or
+  exiting.
+- Remove log output about `build_runner` internals.
+- Print the port that gets picked if you pass 0 for a port number, for example
+  with `dart run build_runner serve web:0`.
+- Improve warnings when an option is specified for an unknown builder.
+- Rewrite bootstrap code to remove use of `dart:mirrors`.
+- Bug fix: require `args` 2.5.0.
+
+## 2.8.0
+
+- Make errors more prominent in log output, highlight in red.
+- Remove "deleting declared outputs" warning.
+- Bug fix: fix incorrect display of some "usage" messages.
 - Move code from `build_resolvers` into `build_runner`.
 - Move code from `build_runner_core` into `build_runner`.
-- Remove unused deps: `build_resolvers`, `build_runner_core`.
+- Move code from `timing` into `build_runner`.
+- Remove unused deps: `build_resolvers`, `build_runner_core`, `timing`.
 
 ## 2.7.2
 

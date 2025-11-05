@@ -1,7 +1,10 @@
 ## 4.0.5-wip
 
+- Bug fix: resolve symlinks when identifying workspaces, so symlinks can't
+  cause the same workspace to be treated as a different workspace.
 - Bump the min SDK to 3.7.0.
 - Remove unused dep: `analyzer`.
+- Add `connectUnchecked` for use in tests.
 
 ## 4.0.4
 

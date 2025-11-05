@@ -84,7 +84,7 @@ void main() {
           'native_null_assertions': false,
         }),
       );
-      var expectedOutputs = Map.of(startingExpectedOutputs)..addAll({
+      final expectedOutputs = Map.of(startingExpectedOutputs)..addAll({
         'a|web/index.dart.bootstrap.js': decodedMatches(
           allOf([
             // Maps non-lib modules to remove the top level dir.
@@ -187,7 +187,7 @@ void main() {
         // Add a fake asset so that the jaspr_web_compilers package exists.
         'jaspr_web_compilers|fake.txt': '',
       };
-      var expectedOutputs = {
+      final expectedOutputs = {
         'a|lib/.ddc.meta_module.clean': isNotNull,
         'a|lib/.ddc.meta_module.raw': isNotNull,
         'a|lib/app.dart.bootstrap.js': decodedMatches(

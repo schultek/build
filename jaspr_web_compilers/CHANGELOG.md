@@ -1,3 +1,10 @@
+## 4.3.0
+
+- When both wasm and js builds are enabled you can now add force_js=true
+  to the URL in your browser to load the js build.
+
+- Allow Dart SDK 3.10.x and 3.11 prerelease.
+
 ## 4.2.3+1
 
 - Fixed `web_plugins` builder when used in a workspace.

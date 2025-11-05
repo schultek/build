@@ -3,8 +3,8 @@
 // BSD-style license that can be found in the LICENSE file.
 
 import 'package:build/build.dart';
-import 'package:build_runner/src/build_script_generate/build_process_state.dart';
-import 'package:build_runner/src/generate/phase.dart';
+import 'package:build_runner/src/bootstrap/build_process_state.dart';
+import 'package:build_runner/src/build_plan/phase.dart';
 import 'package:build_runner/src/logging/ansi_buffer.dart';
 import 'package:build_runner/src/logging/build_log.dart';
 import 'package:build_runner/src/logging/build_log_messages.dart';
@@ -28,31 +28,7 @@ void main() {
       expect(render(), <String>[]);
     });
 
-    test('simple status', () {
-      buildLog.doing('Generating build script.');
-      expect(
-        render(),
-        padLinesRight('''
-Generating build script.'''),
-      );
-    });
-
-    test('simple status wraps', () {
-      buildLog.doing(
-        'This is a long message that will need to wrap for '
-        'display so that it fits in 80 columns because it will '
-        'not fit.',
-      );
-      expect(
-        render(),
-        padLinesRight('''
-This is a long message that will need to wrap for display so that it fits in 80
-columns because it will not fit.'''),
-      );
-    });
-
     test('build_runner info, warnings and errors', () {
-      buildLog.doing('Some setup.');
       buildLog.info('Some info.');
       buildLog.warning('A warning.');
       buildLog.warning('Another warning.');
@@ -60,9 +36,7 @@ columns because it will not fit.'''),
       expect(
         render(),
         padLinesRight('''
-Some setup.
-
-log output for build_runner
+build_runner
   Some info.
 W A warning.
 W Another warning.
@@ -71,7 +45,6 @@ E An error.'''),
     });
 
     test('phase progress', () {
-      buildLog.startBuild();
       final phases = _createPhases({'builder1': 10, 'builder2': 15});
       buildLog.startPhases(phases);
       buildLog.startStep(
@@ -83,9 +56,7 @@ E An error.'''),
         render(),
         padLinesRight('''
 0s builder1 on 10 inputs; pkg|lib/l0.dart
-0s builder2 on 15 inputs
-
-Building, full build.'''),
+0s builder2 on 15 inputs'''),
       );
 
       buildLog.finishStep(
@@ -98,9 +69,7 @@ Building, full build.'''),
         render(),
         padLinesRight('''
 0s builder1 on 10 inputs: 1 output
-0s builder2 on 15 inputs
-
-Building, full build.'''),
+0s builder2 on 15 inputs'''),
       );
 
       buildLog.startStep(
@@ -112,9 +81,7 @@ Building, full build.'''),
         render(),
         padLinesRight('''
 0s builder1 on 10 inputs: 1 output; pkg|lib/l1.dart
-0s builder2 on 15 inputs
-
-Building, full build.'''),
+0s builder2 on 15 inputs'''),
       );
 
       buildLog.finishStep(
@@ -127,9 +94,7 @@ Building, full build.'''),
         render(),
         padLinesRight('''
 0s builder1 on 10 inputs: 1 output, 1 same
-0s builder2 on 15 inputs
-
-Building, full build.'''),
+0s builder2 on 15 inputs'''),
       );
 
       buildLog.startStep(
@@ -147,9 +112,7 @@ Building, full build.'''),
         render(),
         padLinesRight('''
 0s builder1 on 10 inputs: 1 output, 1 same, 1 no-op
-0s builder2 on 15 inputs
-
-Building, full build.'''),
+0s builder2 on 15 inputs'''),
       );
 
       buildLog.startStep(
@@ -162,9 +125,7 @@ Building, full build.'''),
         render(),
         padLinesRight('''
 0s builder1 on 10 inputs: 1 skipped, 1 output, 1 same, 1 no-op
-0s builder2 on 15 inputs
-
-Building, full build.'''),
+0s builder2 on 15 inputs'''),
       );
 
       buildLog.startStep(
@@ -183,14 +144,11 @@ Building, full build.'''),
         padLinesRight('''
 0s builder1 on 10 inputs: 1 skipped, 1 output, 1 same, 1 no-op
 0s builder2 on 15 inputs
-0s builder1 (lazy): 1 output
-
-Building, full build.'''),
+0s builder1 (lazy): 1 output'''),
       );
     });
 
     test('phase progress with builder log output', () {
-      buildLog.startBuild();
       final phases = _createPhases({'builder1': 10, 'builder2': 15});
       buildLog.startPhases(phases);
       buildLog.startStep(
@@ -238,15 +196,14 @@ Building, full build.'''),
 0s builder1 on 10 inputs; pkg|lib/l0.dart
 0s builder2 on 15 inputs
 
-Building, full build.
-
-log output for builder1 on lib/l0.dart
+lib/l0.dart builder1
   Some info.
   Some more info.
-log output for builder2 on lib/l1.dart
+
+lib/l1.dart builder2
 W A warning.
 E An error.
-log output for builder2 on lib/l3.dart
+lib/l3.dart builder2
 E An error.'''),
       );
 
@@ -275,24 +232,21 @@ E An error.'''),
 0s builder2 on 15 inputs
 0s builder1 (lazy): 1 no-op
 
-Building, full build.
-
-log output for builder1 on lib/l0.dart
+lib/l0.dart builder1
   Some info.
   Some more info.
-log output for builder2 on lib/l1.dart
+
+lib/l1.dart builder2
 W A warning.
 E An error.
-log output for builder2 on lib/l3.dart
+lib/l3.dart builder2
 E An error.
-log output for builder1 (lazy) on lib/l3.dart
+lib/l3.dart builder1 (lazy)
 E An error.'''),
       );
     });
 
     test('complete build with builder log output', () {
-      buildLog.fullBuildBecause(FullBuildReason.none);
-      buildLog.startBuild();
       final phases = _createPhases({'builder1': 1, 'builder2': 1});
       buildLog.startPhases(phases);
       buildLog.startStep(
@@ -343,11 +297,12 @@ E An error.'''),
 0s builder1 on 1 input: 1 output
 0s builder2 on 1 input: 1 output
 
+lib/l0.dart builder1
+  Some info.
+
 Built with build_runner in 0s with warnings; wrote 2 outputs.
 
-log output for builder1 on lib/l0.dart
-  Some info.
-log output for builder2 on lib/l0.dart
+lib/l0.dart builder2
 W A warning.
 E An error.'''),
       );

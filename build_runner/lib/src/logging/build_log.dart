@@ -5,9 +5,10 @@
 import 'dart:math';
 
 import 'package:build/build.dart' show AssetId;
+import 'package:built_collection/built_collection.dart';
 
-import '../build_script_generate/build_process_state.dart';
-import '../generate/phase.dart';
+import '../bootstrap/build_process_state.dart';
+import '../build_plan/phase.dart';
 import 'ansi_buffer.dart';
 import 'build_log_configuration.dart';
 import 'build_log_logger.dart';
@@ -66,6 +67,9 @@ class BuildLog {
 
   /// The messages logged, bucketed by build phase.
   final BuildLogMessages _messages = BuildLogMessages();
+
+  /// Errors logged.
+  final ListBuilder<String> _errors = ListBuilder();
 
   /// Progress by build phase.
   final Map<String, _PhaseProgress> _phaseProgress = {};
@@ -145,19 +149,6 @@ class BuildLog {
   BuildLogLogger loggerForOther(String context) =>
       BuildLogLogger(context: context);
 
-  /// Logs why `build_runner` needs to do a full build.
-  ///
-  /// The reason will be displayed when [startBuild] is called.
-  void fullBuildBecause(FullBuildReason reason) {
-    if (buildProcessState.fullBuildReason == FullBuildReason.clean) {
-      buildProcessState.fullBuildReason = reason;
-    }
-    _tick();
-    if (_display.displayingBlocks) {
-      _display.block(render());
-    }
-  }
-
   /// Logs a `build_runner` info.
   void info(String message) {
     if (_display.displayingBlocks) {
@@ -180,6 +171,7 @@ class BuildLog {
 
   /// Logs an `build_runner` error.
   void error(String message) {
+    _errors.add(message);
     if (_display.displayingBlocks) {
       _messages.add(severity: Severity.error, message);
       _display.block(render());
@@ -195,6 +187,7 @@ class BuildLog {
     String? phaseName,
     String? context,
   }) {
+    if (severity == Severity.error) _errors.add(message);
     if (_display.displayingBlocks) {
       _messages.add(
         severity: severity,
@@ -338,19 +331,6 @@ class BuildLog {
     _popPhase();
   }
 
-  /// Describe what `build_runner` is doing.
-  ///
-  /// Logs the task, or in console mode updates the status line.
-  void doing(String task) {
-    if (_display.displayingBlocks) {
-      _status = [task];
-      _tick();
-      _display.block(render());
-    } else {
-      _display.message(Severity.info, task);
-    }
-  }
-
   /// For `watch` and `serve` modes, logs that a new build (not the initial
   /// build) has started.
   ///
@@ -360,16 +340,14 @@ class BuildLog {
     _processDuration = Duration.zero;
     activities.clear();
     _messages.clear();
+    _status.clear();
     _display.flushAndPrint('\nStarting build #${++_buildNumber}.\n');
   }
 
-  /// Logs that the build has started.
-  void startBuild() {
-    doing('Building, ${buildProcessState.fullBuildReason.message}.');
-  }
-
   /// Logs that the build has finished with [result] and the count of [outputs].
-  void finishBuild({required bool result, required int outputs}) {
+  ///
+  /// Returns the list of errors logged.
+  BuiltList<String> finishBuild({required bool result, required int outputs}) {
     _tick();
     final displayingBlocks = _display.displayingBlocks;
     _status = [
@@ -386,8 +364,16 @@ class BuildLog {
       _display.block(render());
       _display.flush();
     } else {
-      _display.message(Severity.info, _status.join(''));
+      _display.message(
+        Severity.info,
+        // Removes ANSI codes if necessary.
+        AnsiBufferLine(_status).toString(),
+      );
     }
+
+    final errors = _errors.build();
+    _errors.clear();
+    return errors;
   }
 
   /// Renders [message] with optional [error] and [stackTrace].
@@ -456,23 +442,33 @@ class BuildLog {
         .fold(0, max);
     final indent = maxProgressWidth + 1;
 
-    for (final entry in displayedProgressEntries) {
-      final phaseName = entry.key;
-
-      result.write(_renderPhase(phaseName).withHangingIndent(indent));
-    }
-
     if (displayedProgressEntries.isNotEmpty) {
-      result.writeLine([]);
-    }
-    if (_status.isNotEmpty) {
-      result.writeLine(_status);
+      for (final entry in displayedProgressEntries) {
+        final phaseName = entry.key;
+
+        result.write(_renderPhase(phaseName).withHangingIndent(indent));
+      }
     }
 
     final renderedMessages = _messages.render();
-    if (renderedMessages.isNotEmpty) {
-      result.writeEmptyLine();
-      for (final line in renderedMessages) {
+
+    // Log output blocks with no errors show before the status line.
+    if (renderedMessages.nonFailureLines.isNotEmpty) {
+      if (result.lines.isNotEmpty) result.writeEmptyLine();
+      for (final line in renderedMessages.nonFailureLines) {
+        result.write(line);
+      }
+    }
+
+    if (_status.isNotEmpty) {
+      if (result.lines.isNotEmpty) result.writeEmptyLine();
+      result.writeLine(_status);
+    }
+
+    // Log output blocks that do have errors show after the status line.
+    if (renderedMessages.failureLines.isNotEmpty) {
+      if (result.lines.isNotEmpty) result.writeEmptyLine();
+      for (final line in renderedMessages.failureLines) {
         result.write(line);
       }
     }

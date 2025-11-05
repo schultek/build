@@ -61,14 +61,14 @@ Future<Dart2WasmBootstrapResult> _bootstrapDart2Wasm(
   List<String> additionalArguments,
   String javaScriptModuleExtension,
 ) async {
-  var dartEntrypointId = buildStep.inputId;
-  var dartEntrypointIdBase = buildStep.inputId.changeExtension('');
-  var moduleId = dartEntrypointId.changeExtension(
+  final dartEntrypointId = buildStep.inputId;
+  final dartEntrypointIdBase = buildStep.inputId.changeExtension('');
+  final moduleId = dartEntrypointId.changeExtension(
     moduleExtension(dart2wasmPlatform),
   );
   var args = <String>[];
   {
-    var module = Module.fromJson(
+    final module = Module.fromJson(
       json.decode(await buildStep.readAsString(moduleId))
           as Map<String, dynamic>,
     );
@@ -77,7 +77,7 @@ Future<Dart2WasmBootstrapResult> _bootstrapDart2Wasm(
       allDeps = (await module.computeTransitiveDependencies(buildStep))
         ..add(module);
     } on UnsupportedModules catch (e) {
-      var librariesString = (await e.exactLibraries(buildStep).toList())
+      final librariesString = (await e.exactLibraries(buildStep).toList())
           .map(
             (lib) => AssetId(
               lib.id.package,
@@ -94,18 +94,18 @@ $librariesString
       return const Dart2WasmBootstrapResult.didNotCompile();
     }
 
-    var scratchSpace = await buildStep.fetchResource(scratchSpaceResource);
-    var allSrcs = allDeps.expand((module) => module.sources);
+    final scratchSpace = await buildStep.fetchResource(scratchSpaceResource);
+    final allSrcs = allDeps.expand((module) => module.sources);
     await scratchSpace.ensureAssets(allSrcs, buildStep);
 
-    var dartUri =
+    final dartUri =
         dartEntrypointId.path.startsWith('lib/')
             ? Uri.parse(
               'package:${dartEntrypointId.package}/'
               '${dartEntrypointId.path.substring('lib/'.length)}',
             )
             : Uri.parse('$multiRootScheme:///${dartEntrypointId.path}');
-    var wasmOutputPath =
+    final wasmOutputPath =
         p.withoutExtension(
           p.withoutExtension(
             dartUri.scheme == 'package'
@@ -115,7 +115,7 @@ $librariesString
         ) +
         wasmExtension;
 
-    var wasmPlatformPath = p.join(
+    final wasmPlatformPath = p.join(
       webSdkDir,
       'kernel',
       'dart2wasm_platform.dill',
@@ -128,7 +128,7 @@ $librariesString
       // process.
       '-E--multi-root-scheme=$multiRootScheme',
       '-E--multi-root=${scratchSpace.tempDir.uri.toFilePath()}',
-      for (var experiment in enabledExperiments)
+      for (final experiment in enabledExperiments)
         '--enable-experiment=$experiment',
       ...additionalArguments,
       '-o',
@@ -138,14 +138,14 @@ $librariesString
   }
 
   log.info('Running `dart compile wasm` with ${args.join(' ')}\n');
-  var result = await Process.run(p.join(sdkDir, 'bin', 'dart'), [
+  final result = await Process.run(p.join(sdkDir, 'bin', 'dart'), [
     'compile',
     'wasm',
     ...args,
   ], workingDirectory: scratchSpace.tempDir.path);
 
-  var wasmOutputId = dartEntrypointIdBase.changeExtension(wasmExtension);
-  var wasmOutputFile = scratchSpace.fileFor(wasmOutputId);
+  final wasmOutputId = dartEntrypointIdBase.changeExtension(wasmExtension);
+  final wasmOutputFile = scratchSpace.fileFor(wasmOutputId);
   if (result.exitCode == 0 && await wasmOutputFile.exists()) {
     log.info('${result.stdout}\n${result.stderr}');
 
@@ -172,7 +172,7 @@ $librariesString
     return const Dart2WasmBootstrapResult.didNotCompile();
   }
 
-  var supportFile = scratchSpace.fileFor(
+  final supportFile = scratchSpace.fileFor(
     dartEntrypointId.changeExtension('.support.js'),
   );
   String? supportExpression;

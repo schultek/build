@@ -17,7 +17,7 @@ import 'package:package_config/package_config.dart';
 import 'package:test/test.dart';
 
 import 'assets.dart';
-import 'in_memory_reader_writer.dart';
+import 'internal_test_reader_writer.dart';
 import 'test_reader_writer.dart';
 
 AssetId _passThrough(AssetId id) => id;
@@ -48,7 +48,7 @@ void checkOutputs(
   TestReaderWriter writer, {
   AssetId Function(AssetId id) mapAssetIds = _passThrough,
 }) {
-  var modifiableActualAssets = Set.of(actualAssets);
+  final modifiableActualAssets = Set.of(actualAssets);
 
   // Ignore asset graph.
   modifiableActualAssets.removeWhere((id) => id.path.endsWith(assetGraphPath));
@@ -61,7 +61,7 @@ void checkOutputs(
             contentsMatcher is Matcher,
       );
 
-      var assetId = makeAssetId(serializedId);
+      final assetId = makeAssetId(serializedId);
 
       // Check that the asset was produced.
       expect(
@@ -78,7 +78,7 @@ void checkOutputs(
         if (!writer.testing.exists(mappedAssetId)) {
           // Then try the usual mapping for generated assets.
           mappedAssetId = AssetId(
-            (writer as InMemoryAssetReaderWriter).rootPackage,
+            (writer as InternalTestReaderWriter).rootPackage,
             '.dart_tool/build/generated/${assetId.package}/${assetId.path}',
           );
         }
@@ -91,7 +91,7 @@ void checkOutputs(
           );
         }
       }
-      var actual = writer.testing.readBytes(mappedAssetId);
+      final actual = writer.testing.readBytes(mappedAssetId);
       Object expected;
       if (contentsMatcher is String) {
         expected = utf8.decode(actual);
@@ -137,7 +137,9 @@ Future<TestBuilderResult> testBuilder(
   PackageConfig? packageConfig,
   Resolvers? resolvers,
   TestReaderWriter? readerWriter,
+  bool verbose = false,
   bool enableLowResourceMode = false,
+  bool flattenOutput = false,
 }) async {
   return testBuilders(
     [builder],
@@ -151,11 +153,89 @@ Future<TestBuilderResult> testBuilder(
     packageConfig: packageConfig,
     resolvers: resolvers,
     readerWriter: readerWriter,
+    verbose: verbose,
     enableLowResourceMode: enableLowResourceMode,
+    flattenOutput: flattenOutput,
   );
 }
 
-/// Runs [builders] in a test environment.
+/// Runs [builders] and [postProcessBuilders] in a test environment.
+///
+/// Calls [testBuilderFactories] with factories that each return a member of
+/// [builders] and [postProcessBuilders], see that method for details.
+///
+/// By default builders will be configured with a test-oriented builder config
+/// that causes builders to run for all files. To instead use the default
+/// `build_runner` config pass [testingBuilderConfig] `false`. To read
+/// `build.yaml` files passed in `sourceAssets`, use [testBuilderFactories]
+/// directly.
+Future<TestBuilderResult> testBuilders(
+  Iterable<Builder> builders,
+  Map<String, /*String|List<int>*/ Object> sourceAssets, {
+  Iterable<PostProcessBuilder> postProcessBuilders = const [],
+  Set<String>? generateFor,
+  bool Function(String assetId)? isInput,
+  String? rootPackage,
+  Map<String, /*String|List<int>|Matcher<List<int>>*/ Object>? outputs,
+  void Function(LogRecord log)? onLog,
+  void Function(AssetId, Iterable<AssetId>)? reportUnusedAssetsForInput,
+  PackageConfig? packageConfig,
+  Resolvers? resolvers,
+  Set<Builder> optionalBuilders = const {},
+  Set<Builder> visibleOutputBuilders = const {},
+  Map<Builder, List<String>> appliesBuilders = const {},
+  bool testingBuilderConfig = true,
+  TestReaderWriter? readerWriter,
+  bool verbose = false,
+  bool enableLowResourceMode = false,
+  bool flattenOutput = false,
+}) {
+  final builderFactories = <BuilderFactory>[];
+  final optionalBuilderFactories = Set<BuilderFactory>.identity();
+  final visibleOutputBuilderFactories = Set<BuilderFactory>.identity();
+  final appliesBuildersToFactories = <BuilderFactory, List<String>>{};
+  for (final builder in builders) {
+    Builder builderFactory(_) => builder;
+    builderFactories.add(builderFactory);
+    if (optionalBuilders.contains(builder)) {
+      optionalBuilderFactories.add(builderFactory);
+    }
+    if (visibleOutputBuilders.contains(builder)) {
+      visibleOutputBuilderFactories.add(builderFactory);
+    }
+    if (appliesBuilders.containsKey(builder)) {
+      appliesBuildersToFactories[builderFactory] = appliesBuilders[builder]!;
+    }
+  }
+  final postProcessBuilderFactories = <PostProcessBuilderFactory>[];
+  for (final postProcessBuilder in postProcessBuilders) {
+    postProcessBuilderFactories.add((_) => postProcessBuilder);
+  }
+  return testBuilderFactories(
+    builderFactories,
+    sourceAssets,
+    postProcessBuilderFactories: postProcessBuilderFactories,
+    generateFor: generateFor,
+    isInput: isInput,
+    rootPackage: rootPackage,
+    outputs: outputs,
+    onLog: onLog,
+    reportUnusedAssetsForInput: reportUnusedAssetsForInput,
+    packageConfig: packageConfig,
+    resolvers: resolvers,
+    optionalBuilderFactories: optionalBuilderFactories,
+    visibleOutputBuilderFactories: visibleOutputBuilderFactories,
+    appliesBuilders: appliesBuildersToFactories,
+    testingBuilderConfig: testingBuilderConfig,
+    readerWriter: readerWriter,
+    verbose: verbose,
+    enableLowResourceMode: enableLowResourceMode,
+    flattenOutput: flattenOutput,
+  );
+}
+
+/// Runs builders from [builderFactories] and [postProcessBuilderFactories] in a
+/// test environment.
 ///
 /// The test environment supplies in-memory build [sourceAssets] to the builders
 /// under test.
@@ -194,29 +274,41 @@ Future<TestBuilderResult> testBuilder(
 /// Enabling of language experiments is supported through the
 /// `withEnabledExperiments` method from package:build.
 ///
-/// To mark a builder as optional, add it to [optionalBuilders]. Optional
-/// builders only run if their output is used by a non-optional builder.
+/// To mark a builder as optional, add it to [optionalBuilderFactories].
+/// Optional builders only run if their output is used by a non-optional
+/// builder.
 ///
-/// To mark a builder's output as visible, add it to [visibleOutputBuilders].
-/// The builder then writes its outputs next to its input, instead of hidden
-/// under `.dart_tool`.
+/// To mark a builder's output as visible, add it to
+/// [visibleOutputBuilderFactories]. The builder then writes its outputs next to
+/// its input, instead of hidden under `.dart_tool`.
 ///
-/// The default builder config will be overwritten with one that causes the
-/// builder to run for all inputs. To use the default builder config instead,
-/// set [testingBuilderConfig] to `false`.
+/// To cause a builder to apply another builder, as `applies_builders` in
+/// `build.yaml`, pass [appliesBuilders].
+///
+/// To override the default builder config with one that causes the builders to
+/// run for all inputs, set [testingBuilderConfig] `true`.
 ///
 /// Optionally pass [readerWriter] to set the filesystem that will be used
 /// during the build. Before the build, [sourceAssets] will be written to it.
 ///
+/// Optionally pass [verbose], which acts like the command line flag: it enables
+/// info logging from builders.
+///
 /// Optionally pass [enableLowResourceMode], which acts like the command
 /// line flag; in particular it disables file caching.
+///
+/// By default generated outputs are written to the `TestReaderWriter` where
+/// they would be written in a real `build_runner` build, which means "hidden"
+/// outputs go in the `.dart_tool/build/generated` folder in the root package.
+/// Pass [flattenOutput] to instead output next to each package source.
 ///
 /// Returns a [TestBuilderResult] with the [BuildResult] and the
 /// [TestReaderWriter] used for the build, which can be used for further
 /// checks.
-Future<TestBuilderResult> testBuilders(
-  Iterable<Builder> builders,
+Future<TestBuilderResult> testBuilderFactories(
+  Iterable<BuilderFactory> builderFactories,
   Map<String, /*String|List<int>*/ Object> sourceAssets, {
+  Iterable<PostProcessBuilderFactory> postProcessBuilderFactories = const [],
   Set<String>? generateFor,
   bool Function(String assetId)? isInput,
   String? rootPackage,
@@ -225,22 +317,35 @@ Future<TestBuilderResult> testBuilders(
   void Function(AssetId, Iterable<AssetId>)? reportUnusedAssetsForInput,
   PackageConfig? packageConfig,
   Resolvers? resolvers,
-  Set<Builder> optionalBuilders = const {},
-  Set<Builder> visibleOutputBuilders = const {},
+  Set<BuilderFactory> optionalBuilderFactories = const {},
+  Set<BuilderFactory> visibleOutputBuilderFactories = const {},
+  Map<BuilderFactory, List<String>> appliesBuilders = const {},
   bool testingBuilderConfig = true,
   TestReaderWriter? readerWriter,
+  bool verbose = false,
   bool enableLowResourceMode = false,
+  bool flattenOutput = false,
 }) async {
   onLog ??= _printOnFailureOrWrite;
 
-  var inputIds = {
-    for (var descriptor in sourceAssets.keys) makeAssetId(descriptor),
+  final inputIds = {
+    for (final descriptor in sourceAssets.keys) makeAssetId(descriptor),
   };
+
+  if (inputIds.isEmpty && rootPackage == null) {
+    throw ArgumentError(
+      '`sourceAssets` is empty so `rootPackage` must be specified, '
+      'but `rootPackage` is null.',
+    );
+  }
 
   // Differentiate input packages and all packages. Builders run on input
   // packages; they can read/resolve all packages. Additional packages are
   // supplied by passing a `readerWriter`.
-  var inputPackages = {for (var id in inputIds) id.package};
+  final inputPackages =
+      inputIds.isEmpty
+          ? {rootPackage!}
+          : {for (final id in inputIds) id.package};
   final allPackages = inputPackages.toSet();
   if (readerWriter != null) {
     for (final asset in readerWriter.testing.assets) {
@@ -252,7 +357,7 @@ Future<TestBuilderResult> testBuilders(
   readerWriter ??= TestReaderWriter(rootPackage: rootPackage);
 
   sourceAssets.forEach((serializedId, contents) {
-    var id = makeAssetId(serializedId);
+    final id = makeAssetId(serializedId);
     if (contents is String) {
       readerWriter!.testing.writeString(id, contents);
     } else if (contents is List<int>) {
@@ -265,6 +370,7 @@ Future<TestBuilderResult> testBuilders(
 
   buildLog.configuration = buildLog.configuration.rebuild((b) {
     b.onLog = onLog;
+    b.verbose = verbose;
   });
   resolvers ??=
       packageConfig == null && enabledExperiments.isEmpty
@@ -286,10 +392,50 @@ Future<TestBuilderResult> testBuilders(
   }
   final packageGraph = PackageGraph.fromRoot(rootNode);
 
+  String builderName(Object builder) {
+    final result = builder.toString();
+    if (result.startsWith("Instance of '") && result.endsWith("'")) {
+      return result.substring("Instance of '".length, result.length - 1);
+    }
+    return result;
+  }
+
+  final builderApplications = <BuilderApplication>[];
+  for (final builderFactory in builderFactories) {
+    // The real build gets the name from the `build.yaml` where the builder is
+    // For tests, use the builder class name, or fall back if the test makes the
+    // builder factory throw.
+    String name;
+    try {
+      name = builderName(builderFactory(const BuilderOptions({})));
+    } catch (e) {
+      name = e.toString();
+    }
+    builderApplications.add(
+      apply(
+        name,
+        [builderFactory],
+        (p) => inputPackages.contains(p.name),
+        isOptional: optionalBuilderFactories.contains(builderFactory),
+        hideOutput: !visibleOutputBuilderFactories.contains(builderFactory),
+        appliesBuilders: appliesBuilders[builderFactory] ?? [],
+      ),
+    );
+  }
+  for (final postProcessBuilderFactory in postProcessBuilderFactories) {
+    String name;
+    try {
+      name = builderName(postProcessBuilderFactory(const BuilderOptions({})));
+    } catch (e) {
+      name = e.toString();
+    }
+    builderApplications.add(applyPostProcess(name, postProcessBuilderFactory));
+  }
+
   final testingOverrides = TestingOverrides(
+    builderApplications: builderApplications.build(),
     packageGraph: packageGraph,
-    reader: readerWriter,
-    writer: readerWriter,
+    readerWriter: readerWriter as InternalTestReaderWriter,
     resolvers: resolvers,
     buildConfig:
         // Override sources to defaults plus all explicitly passed inputs,
@@ -312,7 +458,11 @@ Future<TestBuilderResult> testBuilders(
                         if (package != rootPackage)
                           ...defaultNonRootVisibleAssets,
                         ...inputIds
-                            .where((id) => id.package == package)
+                            .where(
+                              (id) =>
+                                  id.package == package &&
+                                  !id.path.startsWith('.dart_tool/'),
+                            )
                             .map((id) => Glob.quote(id.path)),
                       ],
                     },
@@ -321,45 +471,27 @@ Future<TestBuilderResult> testBuilders(
             }.build()
             : null,
     reportUnusedAssetsForInput: reportUnusedAssetsForInput,
+    flattenOutput: flattenOutput,
   );
 
-  String builderName(Builder builder) {
-    final result = builder.toString();
-    if (result.startsWith("Instance of '") && result.endsWith("'")) {
-      return result.substring("Instance of '".length, result.length - 1);
-    }
-    return result;
-  }
-
   final buildPlan = await BuildPlan.load(
-    builders:
-        [
-          for (final builder in builders)
-            apply(
-              builderName(builder),
-              [(_) => builder],
-              (p) => inputPackages.contains(p.name),
-              isOptional: optionalBuilders.contains(builder),
-              hideOutput: !visibleOutputBuilders.contains(builder),
-            ),
-        ].build(),
+    builderFactories: BuilderFactories(),
     // ignore: invalid_use_of_visible_for_testing_member
     buildOptions: BuildOptions.forTests(
       enableLowResourcesMode: enableLowResourceMode,
-      // Tests always trigger the "build script updated" check, even if it
-      // didn't change. Skip it to allow testing with preserved state.
-      skipBuildScriptCheck: true,
+      verbose: verbose,
     ),
     testingOverrides: testingOverrides,
   );
+  await buildPlan.deleteFilesAndFolders();
 
-  final buildSeries = await BuildSeries.create(buildPlan: buildPlan);
+  final buildSeries = BuildSeries(buildPlan);
 
   // Run the build.
-  final buildResult = await buildSeries.run({});
+  final buildResult = await buildSeries.run({}, recentlyBootstrapped: true);
 
   // Do cleanup that would usually happen on process exit.
-  await buildSeries.beforeExit();
+  await buildSeries.close();
 
   // Stop logging.
   buildLog.configuration = buildLog.configuration.rebuild((b) {
@@ -376,8 +508,22 @@ Future<TestBuilderResult> testBuilders(
 }
 
 class TestBuilderResult {
+  @Deprecated('Use `succeeded`, `outputs` and `errors` instead.')
   final BuildResult buildResult;
   final TestReaderWriter readerWriter;
+
+  bool get succeeded => buildResult.status == BuildStatus.success;
+
+  /// The files that were written.
+  ///
+  /// If the build was an incremental build, outputs of the previous build that
+  /// are reused are _not_ included here.
+  BuiltList<AssetId> get outputs => buildResult.outputs;
+
+  /// The errors that were shown.
+  ///
+  /// If the build failed there must be at least one error.
+  BuiltList<String> get errors => buildResult.errors;
 
   TestBuilderResult({required this.buildResult, required this.readerWriter});
 }

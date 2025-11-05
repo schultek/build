@@ -40,14 +40,14 @@ Future<void> _bootstrapDart2Js(
   required bool? nativeNullAssertions,
   required String entrypointExtension,
 }) async {
-  var dartEntrypointId = buildStep.inputId;
-  var dartEntrypointIdBase = buildStep.inputId.changeExtension('');
-  var moduleId = dartEntrypointId.changeExtension(
+  final dartEntrypointId = buildStep.inputId;
+  final dartEntrypointIdBase = buildStep.inputId.changeExtension('');
+  final moduleId = dartEntrypointId.changeExtension(
     moduleExtension(dart2jsPlatform),
   );
   var args = <String>[];
   {
-    var module = Module.fromJson(
+    final module = Module.fromJson(
       json.decode(await buildStep.readAsString(moduleId))
           as Map<String, dynamic>,
     );
@@ -56,7 +56,7 @@ Future<void> _bootstrapDart2Js(
       allDeps = (await module.computeTransitiveDependencies(buildStep))
         ..add(module);
     } on UnsupportedModules catch (e) {
-      var librariesString = (await e.exactLibraries(buildStep).toList())
+      final librariesString = (await e.exactLibraries(buildStep).toList())
           .map(
             (lib) => AssetId(
               lib.id.package,
@@ -73,19 +73,18 @@ $librariesString
       return;
     }
 
-    var scratchSpace = await buildStep.fetchResource(scratchSpaceResource);
-    var allSrcs = allDeps.expand((module) => module.sources);
+    final scratchSpace = await buildStep.fetchResource(scratchSpaceResource);
+    final allSrcs = allDeps.expand((module) => module.sources);
     await scratchSpace.ensureAssets(allSrcs, buildStep);
 
-    var dartUri =
+    final dartUri =
         dartEntrypointId.path.startsWith('lib/')
             ? Uri.parse(
               'package:${dartEntrypointId.package}/'
               '${dartEntrypointId.path.substring('lib/'.length)}',
             )
             : Uri.parse('$multiRootScheme:///${dartEntrypointId.path}');
-
-    var jsOutputPath =
+    final jsOutputPath =
         p.withoutExtension(
           p.withoutExtension(
             dartUri.scheme == 'package'
@@ -94,7 +93,7 @@ $librariesString
           ),
         ) +
         entrypointExtension;
-    var librariesSpec = p.joinAll([webSdkDir, 'libraries.json']);
+    final librariesSpec = p.joinAll([webSdkDir, 'libraries.json']);
     _validateUserArgs(dart2JsArgs);
     args =
         dart2JsArgs.toList()..addAll([
@@ -102,7 +101,7 @@ $librariesString
           '--packages=$multiRootScheme:///.dart_tool/package_config.json',
           '--multi-root-scheme=$multiRootScheme',
           '--multi-root=${scratchSpace.tempDir.uri.toFilePath()}',
-          for (var experiment in enabledExperiments)
+          for (final experiment in enabledExperiments)
             '--enable-experiment=$experiment',
           if (nativeNullAssertions != null)
             '--${nativeNullAssertions ? '' : 'no-'}native-null-assertions',
@@ -112,31 +111,31 @@ $librariesString
   }
 
   log.info('Running `dart compile js` with ${args.join(' ')}\n');
-  var result = await Process.run(p.join(sdkDir, 'bin', 'dart'), [
+  final result = await Process.run(p.join(sdkDir, 'bin', 'dart'), [
     ..._dart2jsVmArgs,
     'compile',
     'js',
     ...args,
   ], workingDirectory: scratchSpace.tempDir.path);
-  var jsOutputId = dartEntrypointIdBase.changeExtension(entrypointExtension);
-  var jsOutputFile = scratchSpace.fileFor(jsOutputId);
+  final jsOutputId = dartEntrypointIdBase.changeExtension(entrypointExtension);
+  final jsOutputFile = scratchSpace.fileFor(jsOutputId);
   if (result.exitCode == 0 && await jsOutputFile.exists()) {
     log.info('${result.stdout}\n${result.stderr}');
-    var rootDir = p.dirname(jsOutputFile.path);
-    var baseInputName = p.withoutExtension(
+    final rootDir = p.dirname(jsOutputFile.path);
+    final baseInputName = p.withoutExtension(
       p.basenameWithoutExtension(jsOutputId.path),
     );
-    var fileGlob = Glob('$baseInputName$entrypointExtension*');
-    var archive = Archive();
-    await for (var jsFile in fileGlob.list(root: rootDir)) {
+    final fileGlob = Glob('$baseInputName$entrypointExtension*');
+    final archive = Archive();
+    await for (final jsFile in fileGlob.list(root: rootDir)) {
       if (jsFile.path.endsWith(entrypointExtension) ||
           jsFile.path.endsWith(jsEntrypointSourceMapExtension)) {
         // These are explicitly output, and are not part of the archive.
         continue;
       }
       if (jsFile is File) {
-        var fileName = p.relative(jsFile.path, from: rootDir);
-        var fileStats = await jsFile.stat();
+        final fileName = p.relative(jsFile.path, from: rootDir);
+        final fileStats = await jsFile.stat();
         archive.addFile(
           ArchiveFile(
               fileName,
@@ -149,7 +148,7 @@ $librariesString
       }
     }
     if (archive.isNotEmpty) {
-      var archiveId = dartEntrypointIdBase.changeExtension(
+      final archiveId = dartEntrypointIdBase.changeExtension(
         jsEntrypointArchiveExtension,
       );
       await buildStep.writeAsBytes(archiveId, TarEncoder().encode(archive));
@@ -175,14 +174,14 @@ final _resourcePool = Pool(maxWorkersPerTask);
 
 const _dart2jsVmArgsEnvVar = 'BUILD_DART2JS_VM_ARGS';
 final _dart2jsVmArgs = () {
-  var env = Platform.environment[_dart2jsVmArgsEnvVar];
+  final env = Platform.environment[_dart2jsVmArgsEnvVar];
   return env?.split(' ') ?? <String>[];
 }();
 
 /// Validates that user supplied dart2js args don't overlap with ones that we
 /// want you to configure in a different way.
 void _validateUserArgs(List<String> args) {
-  for (var arg in args) {
+  for (final arg in args) {
     if (arg.endsWith('native-null-assertions')) {
       log.warning(
         'Detected a manual native null assertions dart2js argument `$arg`, '
