@@ -30,11 +30,12 @@ void main() {
         p.join(Directory.current.path, fesManagerConfigPath),
       );
       if (configFile.existsSync()) configFile.deleteSync();
-      server = await PersistentFrontendServer.start(
+      server = PersistentFrontendServer(
         sdkRoot: sdkDir,
         fileSystemRoot: tempDir.uri,
         packagesFile: packageConfig,
       );
+      await server.ensureStarted();
     });
 
     tearDown(() async {
@@ -116,11 +117,12 @@ void main() {
         p.join(Directory.current.path, fesManagerConfigPath),
       );
       if (configFile.existsSync()) configFile.deleteSync();
-      server = await PersistentFrontendServer.start(
+      server = PersistentFrontendServer(
         sdkRoot: sdkDir,
         fileSystemRoot: tempDir.uri,
         packagesFile: packageConfig,
       );
+      await server.ensureStarted();
       driver = FrontendServerProxyDriver();
       driver.init(server);
     });

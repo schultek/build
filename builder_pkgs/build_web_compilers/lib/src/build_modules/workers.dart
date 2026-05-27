@@ -143,7 +143,7 @@ PersistentFrontendServer? get persistentFrontendServer =>
 Future<PersistentFrontendServer> startFrontendServerWorker() async {
   if (__persistentFrontendServer != null) return __persistentFrontendServer!;
 
-  final fes = await PersistentFrontendServer.start(
+  final fes = PersistentFrontendServer(
     sdkRoot: sdkDir,
     fileSystemRoot: scratchSpace.tempDir.uri,
     packagesFile: scratchSpace.tempDir.uri.resolve(packagesFilePath),

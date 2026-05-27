@@ -60,6 +60,9 @@ Builder ddcBuilder(BuilderOptions options) {
   if (_readWebHotReloadOption(options)) {
     return DdcFrontendServerBuilder(
       scratchSpaceDir: _readScratchSpaceDirOption(options),
+      librariesPath: _readLibrariesPathOption(options),
+      platformSdk: _readPlatformSdkOption(options),
+      sdkKernelPath: _readDdcKernelPathOption(options),
     );
   }
 

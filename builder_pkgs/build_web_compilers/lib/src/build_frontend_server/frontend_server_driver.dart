@@ -254,45 +254,58 @@ class _CompileExpressionToJsRequest extends _CompilationRequest {
 /// A single instance of the Frontend Server that persists across
 /// compile/recompile requests.
 class PersistentFrontendServer {
-  Process? _server;
-  final Socket? _socket;
-  final Stream<String>? _socketLines;
-  final StdoutHandler? _stdoutHandler;
-  final StreamController<String>? _stdinController;
+  final String sdkRoot;
+  final Uri fileSystemRoot;
+  final Uri packagesFile;
   final Uri outputDillUri;
   final WebMemoryFilesystem _fileSystem;
-  PersistentFrontendServer._({
-    Process? server,
-    StdoutHandler? stdoutHandler,
-    StreamController<String>? stdinController,
-    required this.outputDillUri,
-    required WebMemoryFilesystem fileSystem,
-    Socket? socket,
-    Stream<String>? socketLines,
-  }) : _server = server,
-       _stdoutHandler = stdoutHandler,
-       _stdinController = stdinController,
-       _fileSystem = fileSystem,
-       _socket = socket,
-       _socketLines = socketLines;
 
-  static Future<PersistentFrontendServer> start({
-    required String sdkRoot,
-    required Uri fileSystemRoot,
-    required Uri packagesFile,
+  Process? _server;
+  Socket? _socket;
+  Stream<String>? _socketLines;
+  StdoutHandler? _stdoutHandler;
+  StreamController<String>? _stdinController;
+  Future<void>? _startFuture;
+
+  PersistentFrontendServer({
+    required this.sdkRoot,
+    required this.fileSystemRoot,
+    required this.packagesFile,
+  }) : outputDillUri = fileSystemRoot.resolve('output.dill'),
+       _fileSystem = WebMemoryFilesystem(fileSystemRoot);
+
+  Future<void> ensureStarted({
+    String? librariesPath,
+    String? platformSdk,
+    String? sdkKernelPath,
   }) async {
-    final fes = await _tryConnectToFESManager(fileSystemRoot);
-    if (fes != null) return fes;
+    if (_server != null || _socket != null) return;
+    return _startFuture ??= _doStart(
+      librariesPath: librariesPath,
+      platformSdk: platformSdk,
+      sdkKernelPath: sdkKernelPath,
+    );
+  }
 
-    final outputDillUri = fileSystemRoot.resolve('output.dill');
+  Future<void> _doStart({
+    String? librariesPath,
+    String? platformSdk,
+    String? sdkKernelPath,
+  }) async {
+    final connected = await _tryConnectToFESManager();
+    if (connected) return;
+
     // [platformDill] must be passed to the Frontend Server with a 'file:'
     // prefix to pass schema checks for Windows drive letters.
     final platformDill = Uri.file(
-      p.join(sdkDir, 'lib', '_internal', 'ddc_outline.dill'),
+      p.join(
+        platformSdk ?? sdkRoot,
+        sdkKernelPath ?? 'lib/_internal/ddc_outline.dill',
+      ),
     );
     final args = [
       frontendServerSnapshotPath,
-      '--sdk-root=$sdkRoot',
+      '--sdk-root=${platformSdk ?? sdkRoot}',
       '--incremental',
       '--target=dartdevc',
       '--dartdevc-module-format=ddc',
@@ -303,28 +316,23 @@ class PersistentFrontendServer {
       '--filesystem-scheme=$multiRootScheme',
       '--filesystem-root=${fileSystemRoot.toFilePath()}',
       '--platform=$platformDill',
+      if (librariesPath != null) '--libraries-spec=$librariesPath',
       '--output-dill=${outputDillUri.toFilePath()}',
       '--output-incremental-dill=${outputDillUri.toFilePath()}',
     ];
     final process = await _startWithReaper(dartaotruntimePath, args);
-    final fileSystem = WebMemoryFilesystem(fileSystemRoot);
+    _server = process;
     final stdoutHandler = StdoutHandler(logger: _log);
     process.stdout
         .transform(utf8.decoder)
         .transform(const LineSplitter())
         .listen(stdoutHandler.handler);
     process.stderr.transform(utf8.decoder).listen(stderr.writeln);
+    _stdoutHandler = stdoutHandler;
 
     final stdinController = StreamController<String>();
     stdinController.stream.listen(process.stdin.writeln);
-
-    return PersistentFrontendServer._(
-      server: process,
-      stdoutHandler: stdoutHandler,
-      stdinController: stdinController,
-      outputDillUri: outputDillUri,
-      fileSystem: fileSystem,
-    );
+    _stdinController = stdinController;
   }
 
   /// Tries to connect to a shared Frontend Server manager.
@@ -332,14 +340,12 @@ class PersistentFrontendServer {
   /// Looks for a config file at [fesManagerConfigPath]. If it exists, reads the
   /// port and attempts to connect.
   ///
-  /// If a connection can't be made, returns `null` and deletes the config file.
-  static Future<PersistentFrontendServer?> _tryConnectToFESManager(
-    Uri fileSystemRoot,
-  ) async {
+  /// If a connection can't be made, returns `false` and deletes the config file.
+  Future<bool> _tryConnectToFESManager() async {
     final configFile = File(
       p.join(Directory.current.path, fesManagerConfigPath),
     );
-    if (!configFile.existsSync()) return null;
+    if (!configFile.existsSync()) return false;
 
     try {
       final content = await configFile.readAsString();
@@ -356,13 +362,9 @@ class PersistentFrontendServer {
               .transform(utf8.decoder)
               .transform(const LineSplitter())
               .asBroadcastStream();
-      final fileSystem = WebMemoryFilesystem(fileSystemRoot);
-      return PersistentFrontendServer._(
-        outputDillUri: fileSystemRoot.resolve('output.dill'),
-        fileSystem: fileSystem,
-        socket: socket,
-        socketLines: socketLines,
-      );
+      _socket = socket;
+      _socketLines = socketLines;
+      return true;
     } catch (e) {
       _log.warning(
         'Failed to connect to FES manager. Deleting stale config file and '
@@ -372,7 +374,7 @@ class PersistentFrontendServer {
       try {
         await configFile.delete();
       } catch (_) {}
-      return null;
+      return false;
     }
   }
 
@@ -424,7 +426,7 @@ class PersistentFrontendServer {
     if (_socket != null) {
       final socketLines = _socketLines!;
       final nextResponseFuture = socketLines.first;
-      _socket.writeln(
+      _socket!.writeln(
         jsonEncode({'instruction': 'COMPILE', 'entrypoint': entrypoint}),
       );
       final responseLine = await nextResponseFuture;
@@ -441,7 +443,7 @@ class PersistentFrontendServer {
     }
     _stdoutHandler!.reset();
     _stdinController!.add('compile $entrypoint');
-    return await _stdoutHandler.compilerOutput!.future;
+    return await _stdoutHandler!.compilerOutput!.future;
   }
 
   /// Either [accept] or [reject] should be called after every [recompile] call.
@@ -453,10 +455,10 @@ class PersistentFrontendServer {
     final inputKey = const Uuid().v4();
     _stdinController!.add('recompile $entrypoint $inputKey');
     for (final file in invalidatedFiles) {
-      _stdinController.add(file.toString());
+      _stdinController!.add(file.toString());
     }
-    _stdinController.add(inputKey);
-    return await _stdoutHandler.compilerOutput!.future;
+    _stdinController!.add(inputKey);
+    return await _stdoutHandler!.compilerOutput!.future;
   }
 
   /// Compiles a Dart expression to JS via the Frontend Server.
@@ -476,7 +478,7 @@ class PersistentFrontendServer {
   }) async {
     _stdoutHandler!.reset(expectSources: false);
     _stdinController!.add('JSON_INPUT');
-    _stdinController.add(
+    _stdinController!.add(
       json.encode({
         'type': 'COMPILE_EXPRESSION_JS',
         'data': {
@@ -493,11 +495,11 @@ class PersistentFrontendServer {
     );
     CompilerOutput? result;
     try {
-      result = await _stdoutHandler.compilerOutput!.future.timeout(
+      result = await _stdoutHandler!.compilerOutput!.future.timeout(
         const Duration(seconds: 10),
       );
     } on TimeoutException {
-      _stdoutHandler.reset();
+      _stdoutHandler!.reset();
       return const CompilerOutput(
         '',
         1,
@@ -536,7 +538,7 @@ class PersistentFrontendServer {
   Future<CompilerOutput?> reject() async {
     _stdoutHandler!.reset(expectSources: false);
     _stdinController!.add('reject');
-    return await _stdoutHandler.compilerOutput!.future;
+    return await _stdoutHandler!.compilerOutput!.future;
   }
 
   void reset() {
@@ -563,10 +565,20 @@ class PersistentFrontendServer {
   }
 
   Future<void> shutdown() async {
-    _stdinController!.add('quit');
-    await _server?.exitCode;
-    await _stdinController.close();
-    _server = null;
+    if (_socket != null) {
+      await _socket!.close();
+      _socket = null;
+      _socketLines = null;
+    }
+    if (_server != null) {
+      _stdinController?.add('quit');
+      await _server!.exitCode;
+      await _stdinController?.close();
+      _server = null;
+      _stdinController = null;
+      _stdoutHandler = null;
+    }
+    _startFuture = null;
   }
 }
 
